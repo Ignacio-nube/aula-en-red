@@ -1,0 +1,271 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+/* Inter local (sin Google Fonts): solo latín y latín extendido (ñ, tildes). */
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-ext-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-ext-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/inter/latin-ext-600.css";
+@import "@fontsource/inter/latin-700.css";
+@import "@fontsource/inter/latin-ext-700.css";
+@import "@fontsource/inter/latin-800.css";
+@import "@fontsource/inter/latin-ext-800.css";
+
+@custom-variant dark (&:is(.dark *));
+/* Pantallas bajitas: celular acostado o notebook con poca altura útil. */
+@custom-variant bajo (@media (max-height: 500px));
+
+/* ---------------------------------------------------------------------------
+   Tokens de Punto Digital. Todo color de la app sale de acá, para poder
+   sumar modo oscuro después redefiniendo solo este bloque.
+   --------------------------------------------------------------------------- */
+:root {
+  /* Marca (valores aproximados tomados del logo) */
+  --pd-celeste: #3ab6e6;
+  --pd-celeste-oscuro: #0b7db0;
+  --pd-celeste-claro: #eaf7fd;
+  --pd-gris-texto: #3c3c3b;
+  --pd-gris-medio: #7a7a7a;
+  --pd-fondo: #f6f8fa;
+  --pd-blanco: #ffffff;
+
+  /* Respuestas del quiz (cada una con su forma, ver sección 3.3) */
+  --pd-resp-a: #0b7db0;
+  --pd-resp-b: #f25f5c;
+  --pd-resp-c: #f5b700;
+  --pd-resp-d: #2bb673;
+
+  /* Bien / más o menos / mal como TEXTO sobre fondo claro: los colores de las respuestas son
+     demasiado claros para eso (el verde da 2.4:1 sobre blanco). */
+  --pd-bien-texto: #1a7f4f;
+  --pd-medio-texto: #8f6500;
+  --pd-mal-texto: #c0302c;
+  /* Fondos de la tarjeta de resultado del alumno, con texto blanco encima (≥ 4.5:1). */
+  --pd-bien-fondo: #1a7f4f;
+  --pd-mal-fondo: #c93c39;
+  --pd-neutro-fondo: #616161;
+
+  /* Niveles del medidor de contraseñas */
+  --pd-nivel-debil: #e5484d;
+  --pd-nivel-media: #f5b700;
+  --pd-nivel-fuerte: #2bb673;
+  --pd-nivel-muy-fuerte: #3ab6e6;
+
+  /* Materiales estilo iOS */
+  --pd-blur: 20px;
+  --pd-vidrio: rgb(255 255 255 / 0.72);
+  --pd-velo: rgb(60 60 59 / 0.18);
+  --pd-sombra-tarjeta: 0 1px 2px rgb(16 42 67 / 0.04), 0 8px 24px -6px rgb(16 42 67 / 0.08);
+  --pd-sombra-flotante: 0 2px 6px rgb(16 42 67 / 0.06), 0 24px 48px -12px rgb(16 42 67 / 0.18);
+  --pd-sombra-boton: 0 1px 2px rgb(11 125 176 / 0.25), 0 6px 14px -6px rgb(11 125 176 / 0.45);
+
+  /* Variables que usan los componentes de shadcn, mapeadas a la marca */
+  --background: var(--pd-fondo);
+  --foreground: var(--pd-gris-texto);
+  --card: var(--pd-blanco);
+  --card-foreground: var(--pd-gris-texto);
+  --popover: var(--pd-blanco);
+  --popover-foreground: var(--pd-gris-texto);
+  /* Botones con texto blanco: celeste oscuro, que sí cumple contraste AA */
+  --primary: var(--pd-celeste-oscuro);
+  --primary-foreground: var(--pd-blanco);
+  --secondary: var(--pd-celeste-claro);
+  --secondary-foreground: var(--pd-gris-texto);
+  --muted: #eef1f4;
+  /* Un punto más oscuro que --pd-gris-medio para llegar a 4.5:1 sobre blanco */
+  --muted-foreground: #6b6b6b;
+  --accent: var(--pd-celeste-claro);
+  --accent-foreground: var(--pd-gris-texto);
+  /* Texto rojo sobre su propio fondo al 10 %: con este tono llega a 4.5:1 */
+  --destructive: #c0302c;
+  --border: #e3e8ee;
+  --input: #d8dfe7;
+  --ring: var(--pd-celeste-oscuro);
+  --chart-1: var(--pd-celeste);
+  --chart-2: var(--pd-resp-b);
+  --chart-3: var(--pd-resp-c);
+  --chart-4: var(--pd-resp-d);
+  --chart-5: var(--pd-celeste-oscuro);
+  --radius: 1rem;
+  --sidebar: var(--pd-blanco);
+  --sidebar-foreground: var(--pd-gris-texto);
+  --sidebar-primary: var(--pd-celeste-oscuro);
+  --sidebar-primary-foreground: var(--pd-blanco);
+  --sidebar-accent: var(--pd-celeste-claro);
+  --sidebar-accent-foreground: var(--pd-gris-texto);
+  --sidebar-border: #e3e8ee;
+  --sidebar-ring: var(--pd-celeste-oscuro);
+}
+
+/* Modo oscuro: solo cambian las superficies y el texto. Los colores de marca y de las
+   respuestas son los mismos; --pd-gris-texto queda igual porque se usa sobre amarillo y celeste. */
+.dark {
+  --pd-celeste-claro: #12324a;
+  --pd-bien-texto: #4fd394;
+  --pd-medio-texto: #f5c542;
+  --pd-mal-texto: #ff8a85;
+  --pd-fondo: #0d141c;
+  --pd-vidrio: rgb(23 33 44 / 0.74);
+  --pd-velo: rgb(0 0 0 / 0.45);
+  --pd-sombra-tarjeta: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -6px rgb(0 0 0 / 0.45);
+  --pd-sombra-flotante: 0 2px 6px rgb(0 0 0 / 0.35), 0 24px 48px -12px rgb(0 0 0 / 0.6);
+
+  --background: var(--pd-fondo);
+  --foreground: #e7edf3;
+  --card: #17212c;
+  --card-foreground: #e7edf3;
+  --popover: #1b2633;
+  --popover-foreground: #e7edf3;
+  --secondary: #173a52;
+  --secondary-foreground: #e7edf3;
+  --muted: #1f2b38;
+  --muted-foreground: #a5b0bb;
+  --accent: #173a52;
+  --accent-foreground: #e7edf3;
+  --destructive: #ff8a85;
+  --border: #2a3846;
+  --input: #354555;
+  --ring: var(--pd-celeste);
+  --sidebar: #17212c;
+  --sidebar-foreground: #e7edf3;
+  --sidebar-accent: #173a52;
+  --sidebar-accent-foreground: #e7edf3;
+  --sidebar-border: #2a3846;
+  --sidebar-ring: var(--pd-celeste);
+}
+.dark .vidrio {
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset;
+}
+.dark ::selection {
+  background: rgb(58 182 230 / 0.4);
+}
+
+/* Modo liviano (para PCs lentas): sin vidrio esmerilado. Las animaciones las
+   reduce MotionConfig. */
+.liviano {
+  --pd-blur: 0px;
+  --pd-vidrio: rgb(255 255 255 / 0.97);
+}
+/* Sin desenfoque, el vidrio tiene que ser casi opaco y del color del tema: si no, en oscuro
+   quedaba una barra blanca con el texto claro encima. */
+.dark.liviano {
+  --pd-vidrio: rgb(23 33 44 / 0.97);
+}
+.liviano *,
+.liviano *::before,
+.liviano *::after {
+  backdrop-filter: none !important;
+}
+
+/* Las animaciones de CSS (entradas de diálogos, cambio de pestaña) también se apagan en modo
+   liviano y si la compu pide reducir el movimiento. Las de Motion las maneja MotionConfig. */
+.liviano .animate-in,
+.liviano .animate-out {
+  animation-duration: 1ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-out {
+    animation-duration: 1ms !important;
+  }
+}
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+
+  --color-pd-celeste: var(--pd-celeste);
+  --color-pd-celeste-oscuro: var(--pd-celeste-oscuro);
+  --color-pd-celeste-claro: var(--pd-celeste-claro);
+  --color-pd-gris-texto: var(--pd-gris-texto);
+  --color-pd-gris-medio: var(--pd-gris-medio);
+  --color-pd-fondo: var(--pd-fondo);
+  --color-resp-a: var(--pd-resp-a);
+  --color-resp-b: var(--pd-resp-b);
+  --color-resp-c: var(--pd-resp-c);
+  --color-resp-d: var(--pd-resp-d);
+  --color-bien-texto: var(--pd-bien-texto);
+  --color-nivel-debil: var(--pd-nivel-debil);
+  --color-nivel-media: var(--pd-nivel-media);
+  --color-nivel-fuerte: var(--pd-nivel-fuerte);
+  --color-nivel-muy-fuerte: var(--pd-nivel-muy-fuerte);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.25);
+  --radius-2xl: calc(var(--radius) * 1.25);
+  --radius-3xl: calc(var(--radius) * 1.5);
+  --radius-4xl: calc(var(--radius) * 2);
+}
+
+/* Barra o panel de vidrio esmerilado */
+@utility vidrio {
+  background-color: var(--pd-vidrio);
+  backdrop-filter: saturate(1.6) blur(var(--pd-blur));
+}
+
+/* Fondo general: degradé suave de celeste claro a blanco */
+@utility fondo-pd {
+  background-color: var(--pd-fondo);
+  background-image:
+    radial-gradient(60rem 40rem at 10% -10%, var(--pd-celeste-claro), transparent 70%),
+    radial-gradient(50rem 36rem at 110% 110%, rgb(58 182 230 / 0.12), transparent 70%);
+  transition: background-color 0.3s;
+  background-attachment: fixed;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply fondo-pd min-h-dvh text-foreground;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight text-balance;
+  }
+  ::selection {
+    background: rgb(58 182 230 / 0.3);
+  }
+}

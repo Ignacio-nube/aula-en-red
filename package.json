@@ -1,0 +1,30 @@
+{
+  "name": "aula-en-red",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aula en Red · Punto Digital: quizzes, presentaciones y participación en red local, sin internet.",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c cyan,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client && npm run build -w server",
+    "start": "npm run start -w server",
+    "bots": "npm run bots -w server --",
+    "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "~5.8.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "esbuild@0.27.7": true,
+    "esbuild@0.28.2": true
+  }
+}
