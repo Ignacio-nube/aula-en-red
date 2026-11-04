@@ -2,14 +2,16 @@
 
 export const TIEMPOS_SEG = [5, 10, 20, 30, 60, 90, 120] as const;
 /** multiple: una correcta. vf: verdadero o falso. varias: hay que marcar todas las correctas.
- *  ordenar: los pasos se muestran mezclados y hay que ponerlos en orden (el orden guardado es el correcto). */
-export type TipoPregunta = 'multiple' | 'vf' | 'varias' | 'ordenar';
-export const TIPOS_PREGUNTA: readonly TipoPregunta[] = ['multiple', 'vf', 'varias', 'ordenar'];
+ *  ordenar: los pasos se muestran mezclados y hay que ponerlos en orden (el orden guardado es el correcto).
+ *  tipeo: una carrera de tipeo en medio del quiz; el texto de la pregunta es lo que hay que tipear (no tiene opciones). */
+export type TipoPregunta = 'multiple' | 'vf' | 'varias' | 'ordenar' | 'tipeo';
+export const TIPOS_PREGUNTA: readonly TipoPregunta[] = ['multiple', 'vf', 'varias', 'ordenar', 'tipeo'];
 export const NOMBRE_TIPO: Record<TipoPregunta, string> = {
   multiple: 'Opción múltiple',
   vf: 'Verdadero o falso',
   varias: 'Varias correctas',
   ordenar: 'Ordenar pasos',
+  tipeo: 'Carrera de tipeo',
 };
 
 /** Lo que manda el alumno: una opción, o varias (las que marcó, o el orden que armó). */
@@ -30,10 +32,17 @@ export const LIMITES = {
   maxOpciones: 4,
   minPasos: 3,
   maxPasos: 6,
+  /** Carrera de tipeo: el texto para tipear tiene al menos esto (y como mucho, el largo de una pregunta). */
+  minTipeo: 10,
 } as const;
 
 export function maxOpciones(tipo: TipoPregunta): number {
-  return tipo === 'ordenar' ? LIMITES.maxPasos : tipo === 'vf' ? 2 : LIMITES.maxOpciones;
+  return tipo === 'tipeo' ? 0 : tipo === 'ordenar' ? LIMITES.maxPasos : tipo === 'vf' ? 2 : LIMITES.maxOpciones;
+}
+
+/** Tiempo con el que arranca una pregunta nueva de este tipo: tipear lleva más que elegir. */
+export function tiempoInicial(tipo: TipoPregunta): number {
+  return tipo === 'tipeo' ? 60 : 20;
 }
 
 export interface OpcionQuiz {
@@ -97,8 +106,13 @@ type PreguntaParaValidar = Pick<PreguntaQuiz, 'tipo' | 'texto' | 'tiempoSeg'> & 
 /** Lo que le falta a una pregunta para poder jugarse. Vacío = lista. */
 export function problemasPregunta(p: PreguntaParaValidar): string[] {
   const problemas: string[] = [];
-  if (!p.texto.trim()) problemas.push('Falta el texto de la pregunta.');
-  if (p.tipo === 'ordenar') {
+  if (p.tipo === 'tipeo') {
+    if (!p.texto.trim()) problemas.push('Falta el texto para tipear.');
+    else if (p.texto.trim().length < LIMITES.minTipeo) problemas.push(`El texto para tipear necesita al menos ${LIMITES.minTipeo} letras.`);
+  } else if (!p.texto.trim()) problemas.push('Falta el texto de la pregunta.');
+  if (p.tipo === 'tipeo') {
+    // No tiene opciones: se juega tipeando el texto.
+  } else if (p.tipo === 'ordenar') {
     if (p.opciones.length < LIMITES.minPasos) problemas.push(`Necesita al menos ${LIMITES.minPasos} pasos.`);
     if (p.opciones.some((o) => !o.texto.trim())) problemas.push('Hay pasos sin texto.');
     if (new Set(p.opciones.map((o) => o.texto.trim().toLowerCase())).size < p.opciones.length) problemas.push('Hay dos pasos iguales.');
@@ -119,6 +133,23 @@ export function problemasPregunta(p: PreguntaParaValidar): string[] {
 export function puntaje(tiempoMs: number, totalMs: number, multiplicador: Multiplicador): number {
   const fraccion = Math.min(1, Math.max(0, tiempoMs / totalMs));
   return Math.round(1000 * (1 - fraccion / 2)) * multiplicador;
+}
+
+/**
+ * Carrera de tipeo dentro del quiz. Si terminó, cuenta como correcta (más rápido, más puntos) y los
+ * errores restan hasta la mitad. Si no llegó, suma por lo que avanzó (hasta 400) pero no es acierto.
+ */
+export function puntajeTipeo(o: {
+  terminado: boolean;
+  tiempoMs: number;
+  totalMs: number;
+  avance: number;
+  precision: number;
+  multiplicador: Multiplicador;
+}): number {
+  const calidad = 0.5 + Math.min(100, Math.max(0, o.precision)) / 200;
+  if (o.terminado) return Math.round(puntaje(o.tiempoMs, o.totalMs, 1) * calidad) * o.multiplicador;
+  return Math.round(400 * Math.min(1, Math.max(0, o.avance)) * calidad) * o.multiplicador;
 }
 
 /** Bonus por racha: +100 desde la 2.ª correcta seguida, hasta +500. */

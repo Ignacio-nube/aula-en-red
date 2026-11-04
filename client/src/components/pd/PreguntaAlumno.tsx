@@ -1,14 +1,16 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Reorder, useDragControls } from 'motion/react';
-import { ArrowDown, ArrowUp, Check, GripVertical, Send } from 'lucide-react';
-import type { OpcionEnJuego, PreguntaEnJuego, RespuestaJuego } from '@aula/shared';
+import { LayoutGroup, motion, Reorder, useDragControls } from 'motion/react';
+import { ArrowDown, ArrowUp, Check, GripVertical, Keyboard, Send, X } from 'lucide-react';
+import type { OpcionEnJuego, PreguntaEnJuego, ProgresoTipeo, RespuestaJuego } from '@aula/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { urlImagen } from '@/lib/juego';
+import { MOVIMIENTO } from '@/lib/movimiento';
 import { useCompacto } from '@/lib/pantalla';
 import { cn } from '@/lib/utils';
 import { BotonRespuesta } from './Respuesta';
 import { Temporizador } from './Temporizador';
+import { Tipeador } from './Tipeador';
 
 interface Props {
   pregunta: PreguntaEnJuego;
@@ -27,8 +29,23 @@ interface Props {
 /** Lo que ve el alumno durante una pregunta. También es la vista previa del editor. */
 export function PreguntaAlumno({ pregunta, indice, total, restanteMs, totalMs, pausado, elegida, bloqueado, onResponder }: Props) {
   const compacto = useCompacto();
-  const ayuda =
-    pregunta.tipo === 'varias' ? 'Marcá todas las correctas' : pregunta.tipo === 'ordenar' ? 'Ordenalos de arriba hacia abajo' : null;
+  // En la vista previa del editor, la carrera de tipeo se puede probar (no manda nada).
+  const [montada] = useState(() => performance.now());
+  if (pregunta.tipo === 'tipeo') {
+    return (
+      <PreguntaTipeo
+        pregunta={pregunta}
+        indice={indice}
+        total={total}
+        restanteMs={restanteMs}
+        totalMs={totalMs}
+        transcurridoMs={0}
+        recibido={montada}
+        enviar={() => {}}
+      />
+    );
+  }
+  const ayuda = pregunta.tipo === 'varias' ? 'Marcá todas las correctas' : pregunta.tipo === 'ordenar' ? 'Ponelos en orden' : null;
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 p-3 sm:gap-4 sm:p-6 bajo:gap-2 bajo:py-2">
       <div className="flex items-center gap-4">
@@ -63,6 +80,64 @@ export function PreguntaAlumno({ pregunta, indice, total, restanteMs, totalMs, p
       ) : (
         <Una pregunta={pregunta} elegida={elegida} bloqueado={bloqueado || !onResponder} onResponder={onResponder} />
       )}
+    </div>
+  );
+}
+
+interface PropsTipeo {
+  pregunta: PreguntaEnJuego;
+  indice: number;
+  total: number;
+  restanteMs: number;
+  totalMs: number;
+  pausado?: boolean;
+  servidor?: { posicion: number; errores: number };
+  transcurridoMs: number;
+  recibido: number;
+  enviar: (p: ProgresoTipeo) => void;
+  /** Lo que se ve al llegar (por defecto, "¡Llegaste!"). */
+  terminado?: (datos: { ppm: number; precision: number }) => ReactNode;
+}
+
+/** Carrera de tipeo en medio del quiz: el texto de la pregunta es lo que hay que tipear. */
+export function PreguntaTipeo({ pregunta, indice, total, restanteMs, totalMs, pausado, servidor, transcurridoMs, recibido, enviar, terminado }: PropsTipeo) {
+  const compacto = useCompacto();
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex flex-wrap items-center gap-2 px-3 pt-3 sm:px-6 sm:pt-6">
+        <span className="text-sm font-semibold text-muted-foreground">
+          Pregunta {indice + 1} de {total}
+        </span>
+        <Badge className="gap-1">
+          <Keyboard />
+          Carrera de tipeo
+        </Badge>
+        {pregunta.multiplicador === 2 && <Badge>Puntos dobles</Badge>}
+        {pregunta.multiplicador === 0 && <Badge variant="secondary">Sin puntos</Badge>}
+      </div>
+      <Tipeador
+        texto={pregunta.texto}
+        servidor={servidor}
+        transcurridoMs={transcurridoMs}
+        recibido={recibido}
+        pausado={pausado}
+        extra={<Temporizador restanteMs={restanteMs} totalMs={totalMs} pausado={pausado} tamano={compacto ? 48 : 64} />}
+        enviar={enviar}
+        terminado={
+          terminado ??
+          (({ ppm, precision }) => (
+            <div className="m-auto flex flex-col items-center gap-3 p-6 text-center">
+              <span className="text-7xl" aria-hidden>
+                🏁
+              </span>
+              <h1 className="text-4xl font-extrabold">¡Llegaste!</h1>
+              <p className="text-2xl font-bold text-pd-celeste-oscuro">
+                {ppm} palabras por minuto, {precision}% de precisión
+              </p>
+            </div>
+          ))
+        }
+      />
     </div>
   );
 }
@@ -154,11 +229,26 @@ function Varias({ pregunta, bloqueado, onResponder }: PropsTipo) {
   );
 }
 
-/** Ordenar pasos: se arrastran (o se mueven con las flechas) y se manda el orden. */
+/**
+ * Ordenar pasos. Lo más rápido con el dedo es tocarlos en orden: cada toque sube el paso a "tu orden"
+ * con el número que sigue. Después se pueden acomodar arrastrando la tarjeta entera o con las flechas,
+ * y sacar uno con la X para que vuelva abajo.
+ */
 function Ordenar({ pregunta, bloqueado, onResponder }: PropsTipo) {
-  const [orden, setOrden] = useState<OpcionEnJuego[]>(pregunta.opciones);
+  const [orden, setOrden] = useState<OpcionEnJuego[]>([]);
   const clave = pregunta.opciones.map((o) => o.id).join(',');
-  useEffect(() => setOrden(pregunta.opciones), [pregunta.id, clave]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setOrden([]), [pregunta.id, clave]);
+  const sueltos = pregunta.opciones.filter((o) => !orden.some((x) => x.id === o.id));
+  const completo = sueltos.length === 0;
+
+  const poner = (o: OpcionEnJuego) =>
+    setOrden((actual) => {
+      const n = [...actual, o];
+      // Si queda uno solo, no hay nada que pensar: va último.
+      const resto = pregunta.opciones.filter((x) => !n.some((y) => y.id === x.id));
+      return resto.length === 1 ? [...n, resto[0]!] : n;
+    });
+  const sacar = (id: number) => setOrden((actual) => actual.filter((x) => x.id !== id));
   const mover = (i: number, d: -1 | 1) =>
     setOrden((o) => {
       const j = i + d;
@@ -167,50 +257,106 @@ function Ordenar({ pregunta, bloqueado, onResponder }: PropsTipo) {
       [n[i], n[j]] = [n[j]!, n[i]!];
       return n;
     });
+
   return (
-    <>
-      <Reorder.Group
-        axis="y"
-        values={orden}
-        onReorder={(n) => !bloqueado && setOrden(n)}
-        className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-1"
-      >
-        {orden.map((o, i) => (
-          <Paso key={o.id} opcion={o} posicion={i} total={orden.length} bloqueado={bloqueado} onMover={(d) => mover(i, d)} />
-        ))}
-      </Reorder.Group>
-      <Button size="lg" className="h-14 flex-none text-lg" disabled={bloqueado} onClick={() => onResponder?.(orden.map((o) => o.id))}>
+    <LayoutGroup id={`ordenar-${pregunta.id}`}>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-1">
+        {orden.length > 0 && (
+          <Reorder.Group axis="y" values={orden} onReorder={(n) => !bloqueado && setOrden(n)} className="flex flex-col gap-2" aria-label="Tu orden">
+            {orden.map((o, i) => (
+              <Paso key={o.id} opcion={o} posicion={i} total={orden.length} bloqueado={bloqueado} onMover={(d) => mover(i, d)} onSacar={() => sacar(o.id)} />
+            ))}
+          </Reorder.Group>
+        )}
+        {sueltos.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="px-1 text-sm font-semibold text-muted-foreground">
+              {orden.length === 0 ? 'Tocá los pasos en el orden correcto' : `Tocá el paso ${orden.length + 1}`}
+            </p>
+            <ul className="flex flex-col gap-2">
+              {sueltos.map((o) => (
+                <motion.li key={o.id} layoutId={`paso-${o.id}`} transition={MOVIMIENTO.suave}>
+                  <motion.button
+                    type="button"
+                    disabled={bloqueado}
+                    onClick={() => poner(o)}
+                    whileTap={{ scale: 0.97 }}
+                    className="flex min-h-14 w-full items-center gap-3 rounded-2xl border-2 border-dashed border-pd-celeste-oscuro/40 bg-card/60 px-4 py-2 text-left text-lg font-bold outline-none hover:border-pd-celeste-oscuro hover:bg-card focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-default"
+                  >
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-base text-muted-foreground" aria-hidden>
+                      ?
+                    </span>
+                    <span className="min-w-0 flex-1 leading-tight">{o.texto}</span>
+                  </motion.button>
+                </motion.li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+      <Button size="lg" className="h-14 flex-none text-lg" disabled={bloqueado || !completo} onClick={() => onResponder?.(orden.map((o) => o.id))}>
         <Send data-icon="inline-start" />
-        Mandar este orden
+        {completo ? 'Mandar este orden' : sueltos.length === 1 ? 'Falta 1 paso' : `Faltan ${sueltos.length} pasos`}
       </Button>
-    </>
+    </LayoutGroup>
   );
 }
 
-function Paso({ opcion, posicion, total, bloqueado, onMover }: { opcion: OpcionEnJuego; posicion: number; total: number; bloqueado: boolean; onMover: (d: -1 | 1) => void }) {
+interface PropsPaso {
+  opcion: OpcionEnJuego;
+  posicion: number;
+  total: number;
+  bloqueado: boolean;
+  onMover: (d: -1 | 1) => void;
+  onSacar: () => void;
+}
+
+function Paso({ opcion, posicion, total, bloqueado, onMover, onSacar }: PropsPaso) {
   const arrastre = useDragControls();
   return (
     <Reorder.Item
       value={opcion}
+      layoutId={`paso-${opcion.id}`}
       dragListener={false}
       dragControls={arrastre}
-      className="flex min-h-14 flex-none items-center gap-2 rounded-2xl bg-card py-2 pr-2 pl-1 text-lg font-bold shadow-[var(--pd-sombra-tarjeta)] ring-1 ring-foreground/5 select-none"
-      whileDrag={{ scale: 1.03, boxShadow: 'var(--pd-sombra-flotante)' }}
+      transition={MOVIMIENTO.suave}
+      // Se agarra la tarjeta entera, salvo los botones (que siguen siendo toques).
+      onPointerDown={(e) => {
+        if (bloqueado || (e.target as HTMLElement).closest('button')) return;
+        arrastre.start(e);
+      }}
+      className={cn(
+        'flex min-h-14 flex-none touch-none items-center gap-2 rounded-2xl bg-card py-2 pr-1.5 pl-2 text-lg font-bold shadow-[var(--pd-sombra-tarjeta)] ring-1 ring-foreground/5 select-none',
+        !bloqueado && 'cursor-grab active:cursor-grabbing',
+      )}
+      whileDrag={{ scale: 1.03, boxShadow: 'var(--pd-sombra-flotante)', zIndex: 10 }}
     >
-      <span
-        aria-hidden
-        onPointerDown={(e) => !bloqueado && arrastre.start(e)}
-        className="grid h-10 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted-foreground active:cursor-grabbing"
-      >
-        <GripVertical />
-      </span>
-      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-pd-celeste-oscuro text-base text-white tabular-nums">{posicion + 1}</span>
+      <GripVertical className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-pd-celeste-oscuro text-base text-white tabular-nums">{posicion + 1}</span>
       <span className="min-w-0 flex-1 leading-tight">{opcion.texto}</span>
-      <Button variant="ghost" size="icon" aria-label={`Subir "${opcion.texto}"`} disabled={bloqueado || posicion === 0} onClick={() => onMover(-1)}>
+      {/* En el celu se arrastra con el dedo: las flechas quedan para la compu (y el teclado). */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="max-sm:hidden"
+        aria-label={`Subir "${opcion.texto}"`}
+        disabled={bloqueado || posicion === 0}
+        onClick={() => onMover(-1)}
+      >
         <ArrowUp />
       </Button>
-      <Button variant="ghost" size="icon" aria-label={`Bajar "${opcion.texto}"`} disabled={bloqueado || posicion === total - 1} onClick={() => onMover(1)}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="max-sm:hidden"
+        aria-label={`Bajar "${opcion.texto}"`}
+        disabled={bloqueado || posicion === total - 1}
+        onClick={() => onMover(1)}
+      >
         <ArrowDown />
+      </Button>
+      <Button variant="ghost" size="icon" aria-label={`Sacar "${opcion.texto}"`} disabled={bloqueado} onClick={onSacar}>
+        <X />
       </Button>
     </Reorder.Item>
   );

@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import type {
+  AccionActividad,
   AccionJuego,
   AccionPresentacion,
   Ack,
@@ -11,6 +12,7 @@ import type {
   PreguntaAnonima,
   Presencia,
 } from '@aula/shared';
+import type { ActividadRecibida } from '@/lib/actividad';
 import type { api } from '@/lib/api';
 import type { SocketAula } from '@/lib/socket';
 
@@ -33,6 +35,9 @@ export interface Profe {
   destacada: string | null;
   atencion: Atencion | null;
   encuesta: EncuestaEnVivo | null;
+  /** Actividad en curso (tipeo, etc.). */
+  actividad: ActividadRecibida;
+  controlarActividad: (accion: AccionActividad) => Promise<Ack>;
   /** Para avisar que hay cambios sin guardar antes de cambiar de pestaña. */
   irA: (pestana: string) => void;
 }

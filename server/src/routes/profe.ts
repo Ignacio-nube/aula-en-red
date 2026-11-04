@@ -9,6 +9,7 @@ import { actualizarAlumnoEnFila } from '../clase/manos';
 import { alBorrar as alBorrarComision } from '../clase/presentacion';
 import { alCambiarAlumno, partidaActual } from '../juego/control';
 import { emitirPresencia, expulsarAlumno, getIo } from '../realtime';
+import { editarAlumno } from '../editarAlumno';
 import { error, idDe, textoLimpio } from './util';
 
 export const profe = Router();
@@ -138,27 +139,10 @@ profe.post('/comisiones/:id/alumnos/lote', requireProfe, (req, res) => {
 
 profe.patch('/alumnos/:id', requireProfe, (req, res) => {
   const id = idDe(req.params.id);
-  const fila = id ? buscarAlumno(id) : undefined;
-  if (!id || !fila) return error(res, 404, 'Ese alumno no existe.');
-
-  let nombre = fila.nombre;
-  if (req.body?.nombre !== undefined) {
-    const nuevo = textoLimpio(req.body.nombre);
-    if (!nuevo) return error(res, 400, 'El nombre no puede quedar vacío.');
-    if (nombreRepetido(fila.comision_id, nuevo, id)) return error(res, 409, `Ya hay alguien llamado "${nuevo}" en esta comisión.`);
-    nombre = nuevo;
-  }
-  let avatar = fila.avatar;
-  if (req.body?.avatar !== undefined) {
-    const nuevo = avatarValido(req.body.avatar);
-    if (!nuevo) return error(res, 400, 'Ese avatar no está en la lista.');
-    avatar = nuevo;
-  }
-  db.prepare('UPDATE alumnos SET nombre = ?, avatar = ? WHERE id = ?').run(nombre, avatar, id);
-  emitirPresencia();
-  alCambiarAlumno(id, { id, comisionId: fila.comision_id, nombre, avatar });
-  actualizarAlumnoEnFila({ id, comisionId: fila.comision_id, nombre, avatar });
-  res.json(aAlumnoPublico(buscarAlumno(id)!));
+  if (!id) return error(res, 404, 'Ese alumno no existe.');
+  const r = editarAlumno(id, req.body ?? {}, 'profe');
+  if (!r.ok) return error(res, r.status, r.error);
+  res.json(r.alumno);
 });
 
 profe.delete('/alumnos/:id', requireProfe, (req, res) => {

@@ -1,11 +1,13 @@
 import { Router } from 'express';
-import type {
-  FilaRankingFinal,
-  HistorialAlumno,
-  Quiz,
-  ResultadoPregunta,
-  SesionDetalle,
-  SesionResumen,
+import {
+  promedioEquipo,
+  type FilaEquipo,
+  type FilaRankingFinal,
+  type HistorialAlumno,
+  type Quiz,
+  type ResultadoPregunta,
+  type SesionDetalle,
+  type SesionResumen,
 } from '@aula/shared';
 import { requireProfe } from '../auth';
 import { db } from '../db';
@@ -37,16 +39,17 @@ interface FilaSesion {
   estado: string;
   ultima_cerrada: number;
   iniciada_en: string;
+  equipos: number | null;
 }
 
 const SELECT_SESION = `
-  SELECT s.id, s.comision_id, c.nombre AS comision, s.quiz_json, s.estado, s.ultima_cerrada, s.iniciada_en
+  SELECT s.id, s.comision_id, c.nombre AS comision, s.quiz_json, s.estado, s.ultima_cerrada, s.iniciada_en, s.equipos
   FROM sesiones s JOIN comisiones c ON c.id = s.comision_id`;
 
 function rankingSesion(sesionId: number): FilaRankingFinal[] {
   const filas = db
-    .prepare<[number, number], { alumnoId: number; nombre: string; avatar: string; puntos: number; aciertos: number }>(
-      `SELECT a.id AS alumnoId, a.nombre, a.avatar,
+    .prepare<[number, number], { alumnoId: number; nombre: string; avatar: string; puntos: number; aciertos: number; equipo: number | null }>(
+      `SELECT a.id AS alumnoId, a.nombre, a.avatar, sa.equipo,
               COALESCE(SUM(r.puntos), 0) AS puntos, COALESCE(SUM(r.correcta), 0) AS aciertos
        FROM sesion_alumnos sa
        JOIN alumnos a ON a.id = sa.alumno_id
@@ -63,16 +66,35 @@ function rankingSesion(sesionId: number): FilaRankingFinal[] {
   });
 }
 
+function equiposSesion(cantidad: number | null, ranking: FilaRankingFinal[]): FilaEquipo[] | null {
+  if (cantidad === null) return null;
+  const filas = Array.from({ length: cantidad }, (_, equipo) => {
+    const miembros = ranking.filter((r) => r.equipo === equipo);
+    return { equipo, puntos: promedioEquipo(miembros.map((m) => m.puntos)), delta: 0, puesto: 0, integrantes: miembros.length };
+  }).sort((a, b) => b.puntos - a.puntos || a.equipo - b.equipo);
+  filas.forEach((f, i) => (f.puesto = i === 0 || filas[i - 1]!.puntos !== f.puntos ? i + 1 : filas[i - 1]!.puesto));
+  return filas;
+}
+
 function preguntasSesion(s: FilaSesion): ResultadoPregunta[] {
   const quiz = JSON.parse(s.quiz_json) as Quiz;
-  const stmt = db.prepare<[number, number], { opcion_id: number | null; correcta: number; respuesta_json: string | null }>(
-    'SELECT opcion_id, correcta, respuesta_json FROM respuestas WHERE sesion_id = ? AND pregunta_id = ?',
+  const stmt = db.prepare<[number, number], { opcion_id: number | null; correcta: number; respuesta_json: string | null; nombre: string }>(
+    `SELECT r.opcion_id, r.correcta, r.respuesta_json, a.nombre FROM respuestas r JOIN alumnos a ON a.id = r.alumno_id
+     WHERE r.sesion_id = ? AND r.pregunta_id = ?`,
   );
   return quiz.preguntas.map((p, indice) => {
-    const filas = stmt.all(s.id, p.id).map((f) => ({
+    const crudas = stmt.all(s.id, p.id);
+    // En tipeo, respuesta_json guarda el avance ({ posicion, errores, ppm, precision }), no opciones.
+    const filas = crudas.map((f) => ({
       ...f,
-      eleccion: f.respuesta_json ? (JSON.parse(f.respuesta_json) as number[]) : f.opcion_id !== null ? [f.opcion_id] : [],
+      eleccion: p.tipo !== 'tipeo' && f.respuesta_json ? (JSON.parse(f.respuesta_json) as number[]) : f.opcion_id !== null ? [f.opcion_id] : [],
     }));
+    let tipeo: ResultadoPregunta['tipeo'];
+    if (p.tipo === 'tipeo') {
+      const marcas = crudas.flatMap((f) => (f.respuesta_json ? [{ nombre: f.nombre, ppm: (JSON.parse(f.respuesta_json) as { ppm: number }).ppm }] : []));
+      const mejor = marcas.reduce<(typeof marcas)[number] | null>((m, x) => (!m || x.ppm > m.ppm ? x : m), null);
+      tipeo = { promedioPpm: marcas.length > 0 ? Math.round(marcas.reduce((n, x) => n + x.ppm, 0) / marcas.length) : 0, mejor };
+    }
     const estado: ResultadoPregunta['estado'] = filas.length > 0 ? 'jugada' : indice <= s.ultima_cerrada ? 'salteada' : 'no-jugada';
     const correctas = filas.filter((f) => f.correcta === 1).length;
     return {
@@ -92,6 +114,7 @@ function preguntasSesion(s: FilaSesion): ResultadoPregunta[] {
       correctas,
       total: filas.length,
       porcentaje: filas.length > 0 ? Math.round((correctas / filas.length) * 100) : null,
+      ...(tipeo ? { tipeo } : {}),
     };
   });
 }
@@ -125,7 +148,8 @@ resultados.get('/resultados/sesiones/:id', (req, res) => {
   const s = id ? db.prepare<[number], FilaSesion>(`${SELECT_SESION} WHERE s.id = ?`).get(id) : undefined;
   if (!s) return error(res, 404, 'Esa sesión no existe.');
   const preguntas = preguntasSesion(s);
-  const detalle: SesionDetalle = { ...resumen(s, preguntas), ranking: rankingSesion(s.id), preguntas };
+  const ranking = rankingSesion(s.id);
+  const detalle: SesionDetalle = { ...resumen(s, preguntas), ranking, equipos: equiposSesion(s.equipos, ranking), preguntas };
   res.json(detalle);
 });
 
@@ -145,9 +169,7 @@ resultados.get('/resultados/alumnos/:id', (req, res) => {
   if (!id || !alumno) return error(res, 404, 'Ese alumno no existe.');
   const comision = db.prepare<[number], { nombre: string }>('SELECT nombre FROM comisiones WHERE id = ?').get(alumno.comision_id);
   const filas = db
-    .prepare<[number], FilaSesion>(
-      `${SELECT_SESION} JOIN sesion_alumnos sa ON sa.sesion_id = s.id WHERE sa.alumno_id = ? ORDER BY s.iniciada_en DESC`,
-    )
+    .prepare<[number], FilaSesion>(`${SELECT_SESION} JOIN sesion_alumnos sa ON sa.sesion_id = s.id WHERE sa.alumno_id = ? ORDER BY s.iniciada_en DESC`)
     .all(id);
   const historial: HistorialAlumno = {
     alumnoId: id,

@@ -13,8 +13,10 @@ import type {
   PreguntaAnonima,
   TipoSenal,
 } from './clase';
+import type { AccionActividad, EstadoActividad, MapaActividades, TipoActividad } from './actividades';
 import type { AccionJuego, Ack, EstadoJuego } from './juego';
 import type { RespuestaJuego } from './quiz';
+import type { ProgresoTipeo } from './tipeo';
 import type { AlumnoPublico, ConfigPublica, Presencia } from './types';
 
 export type RolSocket = 'alumno' | 'profe' | 'pantalla';
@@ -53,11 +55,17 @@ export interface ServerToClientEvents {
   'atencion:estado': (atencion: Atencion | null) => void;
   /** Encuesta rápida en curso (null = no hay). Cada rol recibe su vista. */
   'encuesta:estado': (encuesta: EncuestaEnVivo | null) => void;
+  /** Actividad en curso (tipeo, etc.; null = no hay). Cada rol recibe su vista. */
+  'actividad:estado': (estado: EstadoActividad | null) => void;
+  /** Cambió el Drive de ese alumno: al profe (para "compartido conmigo") y al alumno (si lo vació el profe). */
+  'drive:cambio': (alumnoId: number) => void;
 }
 
 export interface ClientToServerEvents {
   /** Alumno: responde la pregunta actual. */
   'juego:responder': (respuesta: RespuestaJuego, ack: (r: Ack) => void) => void;
+  /** Alumno: cuánto lleva tipeado en una pregunta de carrera de tipeo (cada ~250 ms). */
+  'juego:tipeo': (progreso: ProgresoTipeo, ack: (r: Ack) => void) => void;
   /** Profe: controles del juego. */
   'juego:control': (accion: AccionJuego, ack: (r: Ack) => void) => void;
   /** Profe: controles de la presentación. */
@@ -80,6 +88,10 @@ export interface ClientToServerEvents {
   'encuesta:control': (accion: AccionEncuesta, ack: (r: Ack) => void) => void;
   /** Alumno: responde la encuesta (índice de opción, o texto). */
   'encuesta:responder': (valor: number | string, ack: (r: Ack) => void) => void;
+  /** Profe: controles de la actividad. */
+  'actividad:control': (accion: AccionActividad, ack: (r: Ack) => void) => void;
+  /** Alumno: lo que manda en la actividad en curso (en tipeo, su progreso). */
+  'actividad:enviar': (envio: MapaActividades[TipoActividad]['envio'], ack: (r: Ack) => void) => void;
 }
 
 export interface SocketData {

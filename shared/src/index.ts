@@ -3,15 +3,50 @@ export * from './events';
 export * from './password';
 export * from './comunes';
 export * from './quiz';
+export * from './importar';
 export * from './juego';
+export * from './equipos';
 export * from './resultados';
 export * from './clase';
+export * from './tipeo';
+export * from './drive';
+export * from './galeria';
+export * from './actividades';
 
 /** Emojis para los avatares de los alumnos (el profe puede cambiarlos). */
 export const AVATARES: readonly string[] = [
-  '🦊', '🐼', '🐸', '🐙', '🦁', '🐯', '🐨', '🐵', '🦉', '🐧', '🐢', '🦄',
-  '🐝', '🦖', '🐬', '🦜', '🐶', '🐱', '🐰', '🐻', '🚀', '⚡', '🎧', '🎮',
-  '🛹', '🌵', '🍕', '⚽', '🎸', '🌈', '🔥', '🍩',
+  '🦊',
+  '🐼',
+  '🐸',
+  '🐙',
+  '🦁',
+  '🐯',
+  '🐨',
+  '🐵',
+  '🦉',
+  '🐧',
+  '🐢',
+  '🦄',
+  '🐝',
+  '🦖',
+  '🐬',
+  '🦜',
+  '🐶',
+  '🐱',
+  '🐰',
+  '🐻',
+  '🚀',
+  '⚡',
+  '🎧',
+  '🎮',
+  '🛹',
+  '🌵',
+  '🍕',
+  '⚽',
+  '🎸',
+  '🌈',
+  '🔥',
+  '🍩',
 ];
 
 export function avatarAlAzar(): string {

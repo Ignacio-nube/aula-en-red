@@ -1,4 +1,5 @@
 // Historial de sesiones, para la sección Resultados del profe.
+import type { FilaEquipo } from './juego';
 import type { TipoPregunta } from './quiz';
 
 export interface SesionResumen {
@@ -23,6 +24,8 @@ export interface FilaRankingFinal {
   puesto: number;
   puntos: number;
   aciertos: number;
+  /** Índice en EQUIPOS, si se jugó por equipos. */
+  equipo: number | null;
 }
 
 export interface ResultadoPregunta {
@@ -36,10 +39,14 @@ export interface ResultadoPregunta {
   correctas: number;
   total: number;
   porcentaje: number | null;
+  /** Carrera de tipeo: "correctas" son los que llegaron al final; acá, la velocidad. */
+  tipeo?: { promedioPpm: number; mejor: { nombre: string; ppm: number } | null };
 }
 
 export interface SesionDetalle extends SesionResumen {
   ranking: FilaRankingFinal[];
+  /** Ranking de equipos (promedio por integrante), o null si se jugó de a uno. */
+  equipos: FilaEquipo[] | null;
   preguntas: ResultadoPregunta[];
 }
 

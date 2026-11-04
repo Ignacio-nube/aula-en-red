@@ -1,6 +1,7 @@
 import {
   LIMITES,
   maxOpciones,
+  normalizarTexto,
   opcionesVF,
   TIPOS_PREGUNTA,
   problemasPregunta,
@@ -102,8 +103,10 @@ export function normalizarEntrada(entrada: unknown): QuizEntrada {
       if (tipo === 'vf') opciones = opcionesVF(opciones[1]?.esCorrecta !== true);
       // En "ordenar" no hay correctas: vale el orden. Se marcan todas para que nada falle si se cambia el tipo.
       if (tipo === 'ordenar') opciones = opciones.map((o) => ({ ...o, esCorrecta: true }));
-      while (opciones.length < LIMITES.minOpciones) opciones.push({ texto: '', esCorrecta: false });
-      return { tipo, texto: texto(p?.texto, LIMITES.pregunta), imagen, tiempoSeg, multiplicador, opciones };
+      // En tipeo no hay opciones, y el texto se deja tipeable con cualquier teclado (comillas y guiones rectos).
+      if (tipo !== 'tipeo') while (opciones.length < LIMITES.minOpciones) opciones.push({ texto: '', esCorrecta: false });
+      const enunciado = texto(p?.texto, LIMITES.pregunta);
+      return { tipo, texto: tipo === 'tipeo' ? normalizarTexto(enunciado) : enunciado, imagen, tiempoSeg, multiplicador, opciones };
     }),
   };
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Eye, Lock, Plus, Square, Vote, X } from 'lucide-react';
+import { Eye, HardDrive, Lock, Plus, Square, Vote, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { CARITAS_ESCALA, type Comision, type EncuestaEnVivo, type TipoEncuesta } from '@aula/shared';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { emitirConAck } from '@/lib/juego';
 import { cn } from '@/lib/utils';
 import { useProfe } from '../contexto';
+import { DialogoDrives } from './DrivesAlumnos';
 
 /** La comisión a la que apuntan las herramientas: la de lo que esté en curso, o la que tenga más gente. */
 function useComisionObjetivo(): [number | null, (id: number) => void, Comision[]] {
@@ -37,6 +38,7 @@ export function HerramientasClase() {
   const [comisionId, setComisionId, comisiones] = useComisionObjetivo();
   const [mensaje, setMensaje] = useState('Miren al frente');
   const [creando, setCreando] = useState(false);
+  const [viendoDrives, setViendoDrives] = useState(false);
   const hayQuiz = juego.estado !== null && juego.estado.fase !== 'podio';
   const fija = hayQuiz || presentacion !== null || encuesta !== null;
   const nombre = comisiones.find((c) => c.id === comisionId)?.nombre;
@@ -81,35 +83,24 @@ export function HerramientasClase() {
           </Field>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {/* Miren al frente */}
           <div className={cn('flex flex-col gap-3 rounded-3xl p-4 transition-colors', atencion ? 'bg-pd-celeste-claro ring-2 ring-pd-celeste' : 'bg-muted/60')}>
             <Field orientation="horizontal">
-              <Switch
-                id="miren-al-frente"
-                checked={atencion !== null}
-                disabled={comisionId === null}
-                onCheckedChange={(v) => void cambiarAtencion(v)}
-              />
+              <Switch id="miren-al-frente" checked={atencion !== null} disabled={comisionId === null} onCheckedChange={(v) => void cambiarAtencion(v)} />
               <FieldContent>
                 <FieldLabel htmlFor="miren-al-frente" className="text-base font-bold">
                   <Eye className="size-5" />
                   Miren al frente
                 </FieldLabel>
                 <FieldDescription>
-                  {atencion ? 'Las compus de los alumnos muestran el mensaje en grande.' : 'Tapa la pantalla de los alumnos con un mensaje. No bloquea la compu.'}
+                  {atencion
+                    ? 'Las compus de los alumnos muestran el mensaje en grande.'
+                    : 'Tapa la pantalla de los alumnos con un mensaje. No bloquea la compu.'}
                 </FieldDescription>
               </FieldContent>
             </Field>
-            {!atencion && (
-              <Input
-                aria-label="Mensaje"
-                value={mensaje}
-                maxLength={80}
-                onChange={(e) => setMensaje(e.target.value)}
-                className="bg-card"
-              />
-            )}
+            {!atencion && <Input aria-label="Mensaje" value={mensaje} maxLength={80} onChange={(e) => setMensaje(e.target.value)} className="bg-card" />}
           </div>
 
           {/* Encuesta rápida */}
@@ -119,16 +110,33 @@ export function HerramientasClase() {
               Encuesta rápida o ticket de salida
             </div>
             <p className="text-sm text-muted-foreground">
-              {hayQuiz ? 'Esperá a que termine el quiz.' : encuesta ? 'Hay una encuesta en curso (arriba).' : 'Una pregunta para toda la clase: con opciones, caritas o texto libre.'}
+              {hayQuiz
+                ? 'Esperá a que termine el quiz.'
+                : encuesta
+                  ? 'Hay una encuesta en curso (arriba).'
+                  : 'Una pregunta para toda la clase: con opciones, caritas o texto libre.'}
             </p>
             <Button className="self-start" disabled={hayQuiz || encuesta !== null || comisionId === null} onClick={() => setCreando(true)}>
               <Plus data-icon="inline-start" />
               Nueva encuesta
             </Button>
           </div>
+
+          {/* Drive de los chicos */}
+          <div className="flex flex-col gap-3 rounded-3xl bg-muted/60 p-4">
+            <div className="flex items-center gap-2 text-base font-bold">
+              <HardDrive className="size-5" />
+              Drive de los chicos
+            </div>
+            <p className="text-sm text-muted-foreground">Lo que te compartieron y el Drive de cada uno. También podés vaciarlos.</p>
+            <Button variant="outline" className="self-start" disabled={comisionId === null} onClick={() => setViendoDrives(true)}>
+              Ver los Drives
+            </Button>
+          </div>
         </div>
       </CardContent>
       {comisionId !== null && <DialogoEncuesta abierto={creando} onCerrar={() => setCreando(false)} comisionId={comisionId} />}
+      {comisionId !== null && <DialogoDrives abierto={viendoDrives} onCerrar={() => setViendoDrives(false)} comisionId={comisionId} comisionNombre={nombre} />}
     </Card>
   );
 }
@@ -136,7 +144,12 @@ export function HerramientasClase() {
 const PLANTILLAS: { nombre: string; pregunta: string; tipo: TipoEncuesta; opciones: string[] }[] = [
   { nombre: '¿Se entendió?', pregunta: '¿Cuánto entendiste el tema de hoy?', tipo: 'escala', opciones: [] },
   { nombre: 'Ticket de salida', pregunta: '¿Qué te llevás de la clase de hoy?', tipo: 'texto', opciones: [] },
-  { nombre: 'Votación', pregunta: '¿Qué hacemos la próxima clase?', tipo: 'opciones', opciones: ['Seguimos con el tema', 'Un quiz de repaso', 'Práctica en la compu'] },
+  {
+    nombre: 'Votación',
+    pregunta: '¿Qué hacemos la próxima clase?',
+    tipo: 'opciones',
+    opciones: ['Seguimos con el tema', 'Un quiz de repaso', 'Práctica en la compu'],
+  },
 ];
 
 function DialogoEncuesta({ abierto, onCerrar, comisionId }: { abierto: boolean; onCerrar: () => void; comisionId: number }) {
@@ -191,14 +204,21 @@ function DialogoEncuesta({ abierto, onCerrar, comisionId }: { abierto: boolean; 
             <Field>
               <FieldLabel id="tipo-encuesta">Respuestas</FieldLabel>
               <ToggleGroup type="single" variant="outline" aria-labelledby="tipo-encuesta" value={tipo} onValueChange={(v) => v && setTipo(v as TipoEncuesta)}>
-                <ToggleGroupItem value="escala">Caritas {CARITAS_ESCALA[0]}…{CARITAS_ESCALA[4]}</ToggleGroupItem>
+                <ToggleGroupItem value="escala">
+                  Caritas {CARITAS_ESCALA[0]}…{CARITAS_ESCALA[4]}
+                </ToggleGroupItem>
                 <ToggleGroupItem value="opciones">Opciones</ToggleGroupItem>
                 <ToggleGroupItem value="texto">Texto libre</ToggleGroupItem>
               </ToggleGroup>
             </Field>
             <AnimatePresence initial={false}>
               {tipo === 'opciones' && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
                   <div className="flex flex-col gap-2 p-0.5">
                     {opciones.map((o, i) => (
                       <div key={i} className="flex gap-2">
@@ -210,7 +230,13 @@ function DialogoEncuesta({ abierto, onCerrar, comisionId }: { abierto: boolean; 
                           onChange={(e) => setOpciones(opciones.map((x, j) => (j === i ? e.target.value : x)))}
                         />
                         {opciones.length > 2 && (
-                          <Button type="button" variant="ghost" size="icon" aria-label={`Quitar la opción ${i + 1}`} onClick={() => setOpciones(opciones.filter((_, j) => j !== i))}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Quitar la opción ${i + 1}`}
+                            onClick={() => setOpciones(opciones.filter((_, j) => j !== i))}
+                          >
                             <X />
                           </Button>
                         )}
@@ -281,7 +307,9 @@ export function ControlEncuesta({ encuesta: e }: { encuesta: EncuestaEnVivo }) {
               {e.respondieron}
             </motion.span>{' '}
             de {e.conectados} respondieron
-            {e.abierta && e.tipo !== 'texto' && <span className="font-normal text-muted-foreground"> · los resultados los ves solo vos hasta que la cierres</span>}
+            {e.abierta && e.tipo !== 'texto' && (
+              <span className="font-normal text-muted-foreground"> · los resultados los ves solo vos hasta que la cierres</span>
+            )}
           </p>
 
           {e.tipo === 'texto' ? (

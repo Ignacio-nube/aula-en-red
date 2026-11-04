@@ -8,6 +8,8 @@ export interface FilaAlumno {
   avatar: string;
   password_hash: string | null;
   creado_en: string;
+  /** Sin uso: quedó de cuando el alumno podía cambiarse el nombre (migración 6). */
+  nombre_anterior: string | null;
 }
 
 export function aAlumnoPublico(f: FilaAlumno): AlumnoPublico {

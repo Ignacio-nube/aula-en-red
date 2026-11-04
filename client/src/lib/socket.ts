@@ -45,6 +45,21 @@ export function useConectado(socket: SocketAula | null): boolean {
   return conectado;
 }
 
+/**
+ * Si se cortó la conexión hace más de `ms`. Al entrar, el socket tarda un instante en conectarse:
+ * sin esta espera se veía "Se cortó la conexión" por un momento y asustaba.
+ */
+export function useCortado(socket: SocketAula | null, ms = 1500): boolean {
+  const conectado = useConectado(socket);
+  const [cortado, setCortado] = useState(false);
+  useEffect(() => {
+    if (!socket || conectado) return setCortado(false);
+    const id = setTimeout(() => setCortado(true), ms);
+    return () => clearTimeout(id);
+  }, [socket, conectado, ms]);
+  return cortado;
+}
+
 export function usePresencia(socket: SocketAula | null): Presencia {
   const [presencia, setPresencia] = useState<Presencia>({});
   useEffect(() => {

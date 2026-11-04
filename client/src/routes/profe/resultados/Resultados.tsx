@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BarChart3, Download, Trash2, Vote } from 'lucide-react';
+import { BarChart3, Download, Keyboard, Trash2, TrendingDown, TrendingUp, Vote } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fechaSqlite,
@@ -8,10 +8,12 @@ import {
   type Comision,
   type EncuestaGuardada,
   type HistorialAlumno,
+  type HistorialTipeo,
   type ResultadoPregunta,
   type SesionDetalle,
   type SesionResumen,
 } from '@aula/shared';
+import { ChipEquipo, MascotaEquipo } from '@/components/pd/Equipo';
 import { PinAvatar } from '@/components/pd/Pin';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,7 +57,7 @@ async function bajar(ruta: string) {
 }
 
 export function Resultados() {
-  const [vista, setVista] = useState<'sesiones' | 'alumnos' | 'encuestas'>('sesiones');
+  const [vista, setVista] = useState<'sesiones' | 'alumnos' | 'encuestas' | 'tipeo'>('sesiones');
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -65,8 +67,15 @@ export function Resultados() {
             <ToggleGroupItem value="sesiones">Por quiz</ToggleGroupItem>
             <ToggleGroupItem value="alumnos">Por alumno</ToggleGroupItem>
             <ToggleGroupItem value="encuestas">Encuestas</ToggleGroupItem>
+            <ToggleGroupItem value="tipeo">Tipeo</ToggleGroupItem>
           </ToggleGroup>
-          {vista !== 'encuestas' && (
+          {vista === 'tipeo' && (
+            <Button variant="outline" size="sm" onClick={() => void bajar('/tipeo/csv')}>
+              <Download data-icon="inline-start" />
+              Tipeo en CSV
+            </Button>
+          )}
+          {(vista === 'sesiones' || vista === 'alumnos') && (
             <Button variant="outline" size="sm" onClick={() => void bajar('/resultados/csv')}>
               <Download data-icon="inline-start" />
               Todo en CSV
@@ -74,7 +83,7 @@ export function Resultados() {
           )}
         </div>
       </div>
-      {vista === 'sesiones' ? <PorSesion /> : vista === 'alumnos' ? <PorAlumno /> : <PorEncuesta />}
+      {vista === 'sesiones' ? <PorSesion /> : vista === 'alumnos' ? <PorAlumno /> : vista === 'encuestas' ? <PorEncuesta /> : <Tipeo />}
     </div>
   );
 }
@@ -199,6 +208,23 @@ function DetalleSesion({ detalle: d, onBorrar }: { detalle: SesionDetalle; onBor
         </CardHeader>
         <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
           <section className="flex flex-col gap-2">
+            {d.equipos && (
+              <>
+                <h3 className="font-bold">Equipos</h3>
+                <ol className="mb-3 flex flex-col gap-1">
+                  {d.equipos.map((e) => (
+                    <li key={e.equipo} className="flex items-center gap-2 rounded-xl px-2 py-1.5 odd:bg-muted/50">
+                      <span className="w-7 text-right text-sm font-bold text-muted-foreground tabular-nums">{ordinal(e.puesto)}</span>
+                      <ChipEquipo indice={e.equipo} className="text-sm" />
+                      <span className="min-w-0 flex-1 text-sm text-muted-foreground">
+                        {e.integrantes === 1 ? '1 integrante' : `${e.integrantes} integrantes`}
+                      </span>
+                      <span className="text-right text-sm font-semibold tabular-nums">{formatoPuntos(e.puntos)} de promedio</span>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
             <h3 className="font-bold">Ranking final</h3>
             {d.ranking.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nadie participó.</p>
@@ -209,6 +235,7 @@ function DetalleSesion({ detalle: d, onBorrar }: { detalle: SesionDetalle; onBor
                     <span className="w-7 text-right text-sm font-bold text-muted-foreground tabular-nums">{ordinal(r.puesto)}</span>
                     <PinAvatar avatar={r.avatar} tamano={26} />
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">{r.nombre}</span>
+                    {r.equipo !== null && <MascotaEquipo indice={r.equipo} className="size-6 text-2xl" />}
                     <span className="text-sm text-muted-foreground tabular-nums">
                       {r.aciertos}/{d.preguntasJugadas}
                     </span>
@@ -244,7 +271,14 @@ function FilaPregunta({ p }: { p: ResultadoPregunta }) {
         className="flex items-start gap-2 rounded-lg text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <span className="w-6 shrink-0 text-sm font-bold text-muted-foreground tabular-nums">{p.indice + 1}</span>
-        <span className="min-w-0 flex-1 text-sm font-medium">{p.texto}</span>
+        <span className={cn('min-w-0 flex-1 text-sm font-medium', p.tipo === 'tipeo' && 'font-mono')}>
+          {p.tipo === 'tipeo' && (
+            <Badge variant="outline" className="mr-2 font-sans">
+              Tipeo
+            </Badge>
+          )}
+          {p.texto}
+        </span>
         {jugada ? (
           <span className="shrink-0 text-sm font-bold tabular-nums" style={{ color: colorTextoPorcentaje(p.porcentaje) }}>
             {p.porcentaje}%
@@ -259,9 +293,11 @@ function FilaPregunta({ p }: { p: ResultadoPregunta }) {
             <div className="h-full rounded-full" style={{ width: `${p.porcentaje}%`, backgroundColor: colorPorcentaje(p.porcentaje) }} />
           </div>
           <p className="text-xs text-muted-foreground">
-            {p.correctas} de {p.total} acertaron{p.sinResponder > 0 && `, ${p.sinResponder} no llegaron a responder`}.
+            {p.tipo === 'tipeo'
+              ? `${p.correctas} de ${p.total} llegaron al final${p.tipeo ? `; promedio ${p.tipeo.promedioPpm} ppm${p.tipeo.mejor ? `, el más rápido fue ${p.tipeo.mejor.nombre} (${p.tipeo.mejor.ppm} ppm)` : ''}` : ''}.`
+              : `${p.correctas} de ${p.total} acertaron${p.sinResponder > 0 ? `, ${p.sinResponder} no llegaron a responder` : ''}.`}
           </p>
-          {abierta && (
+          {abierta && p.tipo !== 'tipeo' && (
             <ul className="flex flex-col gap-1 rounded-xl bg-muted/50 p-2 text-sm">
               {p.tipo === 'ordenar' && <li className="text-xs text-muted-foreground">En el orden correcto, con cuántos pusieron cada paso en su lugar:</li>}
               {p.opciones.map((o, i) => (
@@ -518,6 +554,139 @@ function PorAlumno() {
       ) : (
         <Card className="p-10 text-center text-muted-foreground">Elegí un alumno para ver su historial.</Card>
       )}
+    </div>
+  );
+}
+
+// --- tipeo ---------------------------------------------------------------------------
+
+/** Carreras de tipeo: cómo viene cada alumno (primera, última y mejor marca) y las carreras hechas. */
+function Tipeo() {
+  const { pedir } = useProfe();
+  const [h, setH] = useState<HistorialTipeo | null>(null);
+  const [confirmacion, setConfirmacion] = useState<PedidoConfirmacion | null>(null);
+  const cargar = useCallback(() => {
+    pedir<HistorialTipeo>('/tipeo/historial')
+      .then(setH)
+      .catch((e) => toast.error(mensajeDe(e)));
+  }, [pedir]);
+  useEffect(cargar, [cargar]);
+
+  if (h === null) return <Skeleton className="h-64 rounded-3xl" />;
+  if (h.carreras.length === 0) {
+    return (
+      <Card>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Keyboard />
+            </EmptyMedia>
+            <EmptyTitle>Todavía no hubo carreras de tipeo</EmptyTitle>
+            <EmptyDescription>Arrancalas desde Clase en vivo → Tipeo. Acá vas a ver cómo mejora cada uno, semana a semana.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </Card>
+    );
+  }
+  const comisiones = [...new Set(h.alumnos.map((a) => a.comisionNombre))];
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Cómo viene cada uno</CardTitle>
+          <CardDescription>Palabras por minuto: la primera carrera, la última y la mejor.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          {comisiones.map((c) => (
+            <section key={c} className="flex flex-col gap-1">
+              {comisiones.length > 1 && <h3 className="font-bold">Comisión {c}</h3>}
+              <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,4.5rem)] gap-x-2 px-2 text-xs font-medium text-muted-foreground">
+                <span />
+                <span className="text-right">Primera</span>
+                <span className="text-right">Última</span>
+                <span className="text-right">Mejor</span>
+              </div>
+              <ol className="flex flex-col gap-1">
+                {h.alumnos
+                  .filter((a) => a.comisionNombre === c)
+                  .map((a) => {
+                    const cambio = a.ultimaPpm - a.primeraPpm;
+                    return (
+                      <li
+                        key={a.alumnoId}
+                        className="grid grid-cols-[minmax(0,1fr)_repeat(3,4.5rem)] items-center gap-x-2 rounded-xl px-2 py-1.5 odd:bg-muted/50"
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <PinAvatar avatar={a.avatar} tamano={26} />
+                          <span className="truncate text-sm font-medium">{a.nombre}</span>
+                          <span className="shrink-0 text-xs text-muted-foreground">{a.carreras === 1 ? '1 carrera' : `${a.carreras} carreras`}</span>
+                        </span>
+                        <span className="text-right text-sm text-muted-foreground tabular-nums">{a.carreras > 1 ? a.primeraPpm : ''}</span>
+                        <span className="flex items-center justify-end gap-1 text-right text-sm tabular-nums">
+                          {a.carreras > 1 && cambio > 0 && <TrendingUp className="size-4 text-bien-texto" aria-label="Mejoró" />}
+                          {a.carreras > 1 && cambio < 0 && <TrendingDown className="size-4 text-muted-foreground" aria-label="Bajó" />}
+                          {a.ultimaPpm}
+                        </span>
+                        <span className="text-right text-sm font-bold tabular-nums">{a.mejorPpm}</span>
+                      </li>
+                    );
+                  })}
+              </ol>
+            </section>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Carreras</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="flex flex-col gap-2">
+            {h.carreras.map((k) => (
+              <li key={k.id} className="flex items-center gap-3 rounded-2xl bg-muted/50 px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{k.titulo}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Comisión {k.comisionNombre}, {fecha(k.iniciadaEn)} h. Llegaron {k.completaron} de {k.participantes}.
+                  </p>
+                  {k.ganador && (
+                    <p className="flex items-center gap-1.5 text-sm">
+                      <PinAvatar avatar={k.ganador.avatar} tamano={20} />
+                      <span className="font-medium">{k.ganador.nombre}</span>
+                      <span className="text-muted-foreground">{k.ganador.ppm} ppm</span>
+                    </p>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Borrar esta carrera"
+                  onClick={() =>
+                    setConfirmacion({
+                      titulo: '¿Borrar esta carrera?',
+                      descripcion: 'Se borran los resultados de todos los que corrieron. Las mejores marcas se recalculan sin ella.',
+                      accion: 'Borrar',
+                      destructiva: true,
+                      onConfirmar: async () => {
+                        try {
+                          await pedir(`/tipeo/carreras/${k.id}`, { method: 'DELETE' });
+                          cargar();
+                        } catch (e) {
+                          toast.error(mensajeDe(e));
+                        }
+                      },
+                    })
+                  }
+                >
+                  <Trash2 />
+                </Button>
+              </li>
+            ))}
+          </ol>
+        </CardContent>
+      </Card>
+      <Confirmar pedido={confirmacion} onCerrar={() => setConfirmacion(null)} />
     </div>
   );
 }

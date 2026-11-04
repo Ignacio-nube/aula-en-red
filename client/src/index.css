@@ -165,6 +165,20 @@
 .liviano .animate-out {
   animation-duration: 1ms !important;
 }
+/* Tecla equivocada en la carrera de tipeo. */
+@keyframes temblor {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  30% {
+    transform: translateX(-3px);
+  }
+  70% {
+    transform: translateX(3px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-in,
   .animate-out {
@@ -267,5 +281,43 @@
   }
   ::selection {
     background: rgb(58 182 230 / 0.3);
+  }
+}
+
+/* El agua del estanque de la sala de espera. El color base es el mismo que usa el dibujo de los peces
+   (components/estanque/renderer.ts), así las escamas se funden con el agua. */
+/* El brillo del centro se registra como color para que también se funda al cambiar de tema (un
+   degradado común cambia de golpe). */
+@property --brillo-estanque {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: rgb(255 255 255 / 0.55);
+}
+@utility bg-estanque {
+  --brillo-estanque: rgb(255 255 255 / 0.55);
+  background-color: rgb(227 241 248);
+  background-image: radial-gradient(70rem 50rem at 50% 45%, var(--brillo-estanque), transparent 70%);
+  transition:
+    background-color 0.3s,
+    --brillo-estanque 0.3s;
+  .dark & {
+    --brillo-estanque: rgb(58 182 230 / 0.08);
+    background-color: rgb(11 26 38);
+  }
+}
+
+/* Toques: sin la espera del doble toque para zoom y sin el recuadro gris de Android/iOS (los botones
+   ya tienen su propio estado al tocarlos y el foco visible con teclado). */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button,
+  a,
+  [role='button'],
+  [role='radio'],
+  [role='tab'],
+  label {
+    touch-action: manipulation;
   }
 }

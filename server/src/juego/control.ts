@@ -1,8 +1,20 @@
-import { problemasPregunta, type Ack, type AccionJuego, type AlumnoConectado, type EstadoJuego, type RolSocket, type SesionInterrumpida } from '@aula/shared';
+import {
+  MAX_EQUIPOS,
+  MIN_EQUIPOS,
+  problemasPregunta,
+  type Ack,
+  type AccionJuego,
+  type AlumnoConectado,
+  type EstadoJuego,
+  type ProgresoTipeo,
+  type RolSocket,
+  type SesionInterrumpida,
+} from '@aula/shared';
 import { db, getConfig, setConfig } from '../db';
 import { leerQuiz } from '../db/quizzes';
 import { controlarEncuesta } from '../clase/encuesta';
 import { presentacionActual } from '../clase/presentacion';
+import { cerrarActividadTerminada, hayActividadEnCurso } from '../actividades/control';
 import { getIo, presenciaActual, estaConectado } from '../realtime';
 import { Partida } from './partida';
 
@@ -42,6 +54,28 @@ export function emitirEstado(): void {
   });
 }
 
+// Carrera de tipeo: los avances llegan varias veces por segundo de cada alumno. Solo la pantalla y el
+// profe los necesitan, así que van a ellos y juntos (como mucho cada CARRERA_MS).
+const CARRERA_MS = 200;
+let carreraProgramada: NodeJS.Timeout | null = null;
+function emitirCarrera(): void {
+  if (carreraProgramada) return;
+  carreraProgramada = setTimeout(() => {
+    carreraProgramada = null;
+    const io = getIo();
+    if (!io || !partida) return;
+    io.to('profe').emit('juego:estado', partida.vista('profe'));
+    io.to('pantalla').emit('juego:estado', partida.vista('pantalla'));
+  }, CARRERA_MS);
+}
+
+export function progresoTipeo(alumnoId: number, comisionId: number, envio: ProgresoTipeo): Ack {
+  if (!partida || partida.comisionId !== comisionId) return { ok: false, error: 'No hay ningún quiz en curso.' };
+  const r = partida.progresoTipeo(alumnoId, envio);
+  if (r.ok && r.termino === false) emitirCarrera();
+  return r.ok ? { ok: true } : r;
+}
+
 function nuevaPartida(crear: (opciones: { avisar: () => void; estaConectado: (id: number) => boolean }) => Partida | null): Partida | null {
   const p = crear({ avisar: emitirEstado, estaConectado });
   if (!p) return null;
@@ -66,12 +100,14 @@ export function cerrarPartidaTerminada(): void {
 }
 
 const ERROR_PRESENTANDO = 'Hay una presentación en curso. Terminala antes de empezar un quiz.';
+const ERROR_ACTIVIDAD = 'Hay una actividad en curso (por ejemplo, una carrera de tipeo). Terminala antes de empezar un quiz.';
 
 export function controlar(accion: AccionJuego): Ack {
   switch (accion.tipo) {
     case 'iniciar': {
       if (hayJuegoEnCurso()) return { ok: false, error: 'Ya hay un quiz en curso. Terminalo antes de empezar otro.' };
       if (presentacionActual()) return { ok: false, error: ERROR_PRESENTANDO };
+      if (hayActividadEnCurso()) return { ok: false, error: ERROR_ACTIVIDAD };
       const quiz = leerQuiz(accion.quizId);
       if (!quiz) return { ok: false, error: 'Ese quiz no existe.' };
       if (quiz.preguntas.length === 0) return { ok: false, error: 'El quiz no tiene preguntas.' };
@@ -81,16 +117,32 @@ export function controlar(accion: AccionJuego): Ack {
       }
       const comision = db.prepare<[number], { nombre: string }>('SELECT nombre FROM comisiones WHERE id = ?').get(accion.comisionId);
       if (!comision) return { ok: false, error: 'Esa comisión no existe.' };
+      const equipos = accion.equipos ?? null;
+      if (equipos !== null && (!Number.isInteger(equipos) || equipos < MIN_EQUIPOS || equipos > MAX_EQUIPOS)) {
+        return { ok: false, error: `Se puede jugar con ${MIN_EQUIPOS} a ${MAX_EQUIPOS} equipos.` };
+      }
 
       cerrarPartida();
+      cerrarActividadTerminada();
       // Si quedaba una encuesta en pantalla, el quiz la reemplaza (lo respondido queda guardado).
       controlarEncuesta({ tipo: 'quitar' });
       const { lastInsertRowid } = db
-        .prepare('INSERT INTO sesiones (quiz_id, comision_id, quiz_json, bonus_racha) VALUES (?, ?, ?, ?)')
-        .run(quiz.id, accion.comisionId, JSON.stringify(quiz), accion.bonusRacha ? 1 : 0);
+        .prepare('INSERT INTO sesiones (quiz_id, comision_id, quiz_json, bonus_racha, equipos) VALUES (?, ?, ?, ?, ?)')
+        .run(quiz.id, accion.comisionId, JSON.stringify(quiz), accion.bonusRacha ? 1 : 0, equipos);
       setConfig({ bonusRacha: accion.bonusRacha });
       partida = nuevaPartida(
-        (o) => new Partida(Number(lastInsertRowid), accion.comisionId, comision.nombre, quiz, accion.bonusRacha, getConfig().modoRanking, o.avisar, o.estaConectado),
+        (o) =>
+          new Partida(
+            Number(lastInsertRowid),
+            accion.comisionId,
+            comision.nombre,
+            quiz,
+            accion.bonusRacha,
+            getConfig().modoRanking,
+            o.avisar,
+            o.estaConectado,
+            equipos,
+          ),
       );
       emitirEstado();
       return { ok: true };
@@ -99,9 +151,11 @@ export function controlar(accion: AccionJuego): Ack {
     case 'retomar': {
       if (hayJuegoEnCurso()) return { ok: false, error: 'Ya hay un quiz en curso. Terminalo antes de retomar otro.' };
       if (presentacionActual()) return { ok: false, error: ERROR_PRESENTANDO };
+      if (hayActividadEnCurso()) return { ok: false, error: ERROR_ACTIVIDAD };
       const p = nuevaPartida((o) => Partida.desdeBase(accion.sesionId, { ...o, modoRanking: getConfig().modoRanking }));
       if (!p) return { ok: false, error: 'No se pudo retomar: esa sesión ya terminó o se borró la comisión.' };
       cerrarPartida();
+      cerrarActividadTerminada();
       partida = p;
       emitirEstado();
       return { ok: true };
@@ -109,9 +163,7 @@ export function controlar(accion: AccionJuego): Ack {
 
     case 'descartar': {
       if (partida?.sesionId === accion.sesionId && hayJuegoEnCurso()) return { ok: false, error: 'Ese quiz está en curso.' };
-      db.prepare("UPDATE sesiones SET estado = 'finalizada', finalizada_en = datetime('now') WHERE id = ? AND estado = 'activa'").run(
-        accion.sesionId,
-      );
+      db.prepare("UPDATE sesiones SET estado = 'finalizada', finalizada_en = datetime('now') WHERE id = ? AND estado = 'activa'").run(accion.sesionId);
       return { ok: true };
     }
 
@@ -141,6 +193,10 @@ export function controlar(accion: AccionJuego): Ack {
       return partida.saltar();
     case 'terminar':
       return partida.terminar();
+    case 'mezclarEquipos':
+      return partida.mezclarEquipos();
+    case 'moverEquipo':
+      return partida.moverEquipo(Number(accion.alumnoId), Number(accion.equipo));
   }
 }
 

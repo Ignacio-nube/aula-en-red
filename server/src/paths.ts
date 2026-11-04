@@ -14,7 +14,9 @@ export const DATA_DIR = process.env.AULA_DATA_DIR ? path.resolve(process.env.AUL
 export const DB_PATH = path.join(DATA_DIR, 'app.db');
 export const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 export const PRESENTACIONES_DIR = path.join(DATA_DIR, 'presentaciones');
+/** Archivos del simulador de Drive, en una carpeta por alumno. No se sirven estáticos: pasan por un control de permisos. */
+export const DRIVE_DIR = path.join(DATA_DIR, 'drive');
 
 export function crearCarpetasDeDatos(): void {
-  for (const dir of [DATA_DIR, UPLOADS_DIR, PRESENTACIONES_DIR]) mkdirSync(dir, { recursive: true });
+  for (const dir of [DATA_DIR, UPLOADS_DIR, PRESENTACIONES_DIR, DRIVE_DIR]) mkdirSync(dir, { recursive: true });
 }

@@ -10,6 +10,7 @@ import {
 } from '@aula/shared';
 import { db } from '../db';
 import { hayJuegoEnCurso } from '../juego/control';
+import { hayActividadEnCurso } from '../actividades/control';
 import { getIo, presenciaActual } from '../realtime';
 
 interface Encuesta {
@@ -113,6 +114,7 @@ export function controlarEncuesta(accion: AccionEncuesta): Ack {
     case 'iniciar': {
       if (actual?.abierta) return { ok: false, error: 'Ya hay una encuesta abierta. Cerrala antes de empezar otra.' };
       if (hayJuegoEnCurso()) return { ok: false, error: 'Hay un quiz en curso. Esperá a que termine.' };
+      if (hayActividadEnCurso()) return { ok: false, error: 'Hay una actividad en curso. Esperá a que termine.' };
       const comision = db.prepare<[number], { nombre: string }>('SELECT nombre FROM comisiones WHERE id = ?').get(Number(accion.comisionId));
       if (!comision) return { ok: false, error: 'Elegí una comisión.' };
       const pregunta = textoLimpio(accion.pregunta, 200);
@@ -121,7 +123,10 @@ export function controlarEncuesta(accion: AccionEncuesta): Ack {
       let opciones: string[] = [];
       if (tipo === 'escala') opciones = [...CARITAS_ESCALA];
       if (tipo === 'opciones') {
-        opciones = (Array.isArray(accion.opciones) ? accion.opciones : []).map((o) => textoLimpio(o, 60)).filter(Boolean).slice(0, 6);
+        opciones = (Array.isArray(accion.opciones) ? accion.opciones : [])
+          .map((o) => textoLimpio(o, 60))
+          .filter(Boolean)
+          .slice(0, 6);
         if (opciones.length < 2) return { ok: false, error: 'Poné al menos 2 opciones.' };
       }
       const anonima = accion.anonima !== false;

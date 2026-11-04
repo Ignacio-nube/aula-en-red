@@ -9,6 +9,9 @@ export interface Comision {
 }
 
 /** Lo que ve cualquiera en la pantalla de ingreso: nunca incluye el hash. */
+/** La sesión de un alumno dura esto desde que ingresa; después tiene que volver a poner su contraseña. */
+export const DURACION_SESION_ALUMNO_MS = 2 * 60 * 60 * 1000;
+
 export interface AlumnoPublico {
   id: number;
   comisionId: number;

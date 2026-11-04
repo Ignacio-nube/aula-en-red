@@ -2,6 +2,7 @@ import type { Ack, AccionPresentacion, EstadoPresentacion, RolSocket } from '@au
 import { db, guardarEstado, leerEstado } from '../db';
 import { buscarPresentacion } from '../db/presentaciones';
 import { cerrarPartidaTerminada, hayJuegoEnCurso } from '../juego/control';
+import { cerrarActividadTerminada, hayActividadEnCurso } from '../actividades/control';
 import { getIo } from '../realtime';
 
 /** Una sola presentación en vivo a la vez. Se guarda en la base para retomarla si se reinicia el servidor. */
@@ -44,11 +45,13 @@ export function controlarPresentacion(accion: AccionPresentacion): Ack {
 
   if (accion.tipo === 'iniciar') {
     if (hayJuegoEnCurso()) return { ok: false, error: 'Hay un quiz en curso. Terminalo antes de presentar.' };
+    if (hayActividadEnCurso()) return { ok: false, error: 'Hay una actividad en curso. Terminala antes de presentar.' };
     const p = buscarPresentacion(accion.presentacionId);
     if (!p) return { ok: false, error: 'Esa presentación no existe.' };
     const comision = db.prepare<[number], { nombre: string }>('SELECT nombre FROM comisiones WHERE id = ?').get(accion.comisionId);
     if (!comision) return { ok: false, error: 'Esa comisión no existe.' };
     cerrarPartidaTerminada();
+    cerrarActividadTerminada();
     enVivo = {
       presentacionId: p.id,
       titulo: p.titulo,

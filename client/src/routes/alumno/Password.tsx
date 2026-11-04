@@ -86,6 +86,7 @@ function Crear({ alumno, nivelMinimo, onEntrar, onCambioEstado }: Props) {
               <Field>
                 <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                 <CampoPassword
+                  sinGuardar
                   id="password"
                   autoFocus
                   value={password}
@@ -96,6 +97,7 @@ function Crear({ alumno, nivelMinimo, onEntrar, onCambioEstado }: Props) {
               <Field data-invalid={mostrarNoCoinciden || undefined}>
                 <FieldLabel htmlFor="confirmacion">Repetila</FieldLabel>
                 <CampoPassword
+                  sinGuardar
                   id="confirmacion"
                   value={confirmacion}
                   maxLength={128}
@@ -154,6 +156,7 @@ function Ingresar({ alumno, onEntrar, onCambioEstado }: Props) {
           <Field data-invalid={!!error || undefined}>
             <FieldLabel htmlFor="password">Contraseña</FieldLabel>
             <CampoPassword
+              sinGuardar
               id="password"
               autoFocus
               value={password}

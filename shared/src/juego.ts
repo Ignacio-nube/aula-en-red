@@ -1,5 +1,6 @@
 // Estado del juego en vivo. El servidor arma una "vista" distinta para profe, pantalla y cada alumno.
 import type { Multiplicador, TipoPregunta } from './quiz';
+import type { CorredorTipeo } from './tipeo';
 
 export type FaseJuego = 'lobby' | 'cuenta' | 'pregunta' | 'resultado' | 'ranking' | 'podio';
 export type ModoRanking = 'todos' | 'top3';
@@ -38,6 +39,18 @@ export interface FilaRanking {
   /** Puntos que sumó en la última pregunta cerrada. */
   delta: number;
   conectado: boolean;
+  /** Índice en EQUIPOS, o null si se juega de a uno. */
+  equipo: number | null;
+}
+
+/** Un equipo en el ranking: el puntaje es el promedio de sus integrantes. */
+export interface FilaEquipo {
+  equipo: number;
+  puntos: number;
+  /** Lo que subió el promedio en la última pregunta cerrada. */
+  delta: number;
+  puesto: number;
+  integrantes: number;
 }
 
 export interface MiEstado {
@@ -53,6 +66,11 @@ export interface MiEstado {
   racha: number;
   puntos: number;
   puesto: number | null;
+  /** Su equipo (índice en EQUIPOS) y el puesto del equipo, si se juega por equipos. */
+  equipo?: number;
+  puestoEquipo?: number;
+  /** Carrera de tipeo: lo que lleva (para retomar si recarga) y, al cerrar, cómo le fue. */
+  tipeo?: { posicion: number; errores: number; ppm: number; precision: number; terminado: boolean; puesto: number | null };
 }
 
 export interface EstadoJuego {
@@ -83,6 +101,12 @@ export interface EstadoJuego {
   bonusRacha: boolean;
   /** Solo para el profe: quiénes ya respondieron la pregunta actual. */
   quienesRespondieron?: number[];
+  /** Ranking de equipos (null = se juega de a uno). Lo ven todos. */
+  equipos: FilaEquipo[] | null;
+  /** Carrera de tipeo: los corredores (profe y pantalla; el alumno solo el top 3 al cerrar). null en otras preguntas. */
+  carrera: CorredorTipeo[] | null;
+  /** Carrera de tipeo: ms desde que arrancó la pregunta, para que cada compu calcule sus ppm. */
+  transcurridoMs: number;
   /** Preguntas salteadas (índices). */
   salteadas: number[];
   /** Solo para cada alumno. */
@@ -90,7 +114,7 @@ export interface EstadoJuego {
 }
 
 export type AccionJuego =
-  | { tipo: 'iniciar'; quizId: number; comisionId: number; bonusRacha: boolean }
+  | { tipo: 'iniciar'; quizId: number; comisionId: number; bonusRacha: boolean; equipos: number | null }
   | { tipo: 'retomar'; sesionId: number }
   | { tipo: 'descartar'; sesionId: number }
   | { tipo: 'siguiente' }
@@ -100,7 +124,10 @@ export type AccionJuego =
   | { tipo: 'saltar' }
   | { tipo: 'terminar' }
   | { tipo: 'cerrar' }
-  | { tipo: 'modoRanking'; modo: ModoRanking };
+  | { tipo: 'modoRanking'; modo: ModoRanking }
+  /** En la sala de espera: rearmar los equipos al azar, o pasar a alguien a otro equipo. */
+  | { tipo: 'mezclarEquipos' }
+  | { tipo: 'moverEquipo'; alumnoId: number; equipo: number };
 
 export type Ack = { ok: true } | { ok: false; error: string };
 

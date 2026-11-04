@@ -5,20 +5,25 @@ import express, { type ErrorRequestHandler } from 'express';
 import { PIN_POR_DEFECTO, PIN_PROFE, PUERTO } from './config';
 import './db';
 import { CLIENT_DIST, PRESENTACIONES_DIR, UPLOADS_DIR } from './paths';
+import { borrarSesionesVencidas } from './auth';
+import { limpiarDrivesHuerfanos } from './db/drive';
+import { restaurarActividad } from './actividades/control';
 import { iniciarRealtime } from './realtime';
 import { alumno } from './routes/alumno';
 import { csv } from './routes/csv';
+import { drive } from './routes/drive';
 import { info, urlsLocales } from './routes/info';
 import { presentaciones } from './routes/presentaciones';
 import { profe } from './routes/profe';
 import { quizzes } from './routes/quizzes';
 import { resultados } from './routes/resultados';
+import { tipeo } from './routes/tipeo';
 
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 
-app.use('/api', info, alumno, profe, quizzes, presentaciones, csv, resultados);
+app.use('/api', info, alumno, profe, quizzes, presentaciones, csv, resultados, tipeo, drive);
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Ruta inexistente.' });
 });
@@ -58,6 +63,11 @@ app.use(manejarError);
 
 const http = createServer(app);
 iniciarRealtime(http);
+restaurarActividad();
+// Las sesiones de alumno vencidas no sirven más: se borran al arrancar y cada hora.
+borrarSesionesVencidas();
+limpiarDrivesHuerfanos();
+setInterval(borrarSesionesVencidas, 60 * 60 * 1000).unref();
 
 http.on('error', (err: NodeJS.ErrnoException) => {
   if (err.code === 'EADDRINUSE') {

@@ -6,6 +6,7 @@ import { bajarMano } from '../clase/manos';
 import { alSalirAlumno } from '../clase/participacion';
 import { db, getConfig } from '../db';
 import { aAlumnoPublico, buscarAlumno, existeComision, listarAlumnos, listarComisiones } from '../db/alumnos';
+import { editarAlumno } from '../editarAlumno';
 import { error, idDe } from './util';
 
 export const alumno = Router();
@@ -69,6 +70,15 @@ alumno.get('/alumno/yo', (req, res) => {
   const a = alumnoDeToken(tokenDe(req));
   if (!a) return error(res, 401, 'Tu sesión terminó. Volvé a ingresar.');
   res.json(a);
+});
+
+/** El alumno cambia su emoji (el nombre es el de la lista del profe). */
+alumno.patch('/alumno/yo', (req, res) => {
+  const a = alumnoDeToken(tokenDe(req));
+  if (!a) return error(res, 401, 'Tu sesión terminó. Volvé a ingresar.');
+  const r = editarAlumno(a.id, { avatar: req.body?.avatar }, 'alumno');
+  if (!r.ok) return error(res, r.status, r.error);
+  res.json(r.alumno);
 });
 
 alumno.post('/alumno/logout', (req, res) => {

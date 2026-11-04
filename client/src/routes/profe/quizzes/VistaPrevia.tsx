@@ -38,7 +38,9 @@ export function VistaPrevia({
       <DialogContent className="max-w-[min(92vw,1100px)] sm:max-w-[min(92vw,1100px)]">
         <DialogHeader>
           <DialogTitle>Vista previa</DialogTitle>
-          <DialogDescription>Así la ve un alumno en su compu. Podés tocar una opción para probar.</DialogDescription>
+          <DialogDescription>
+            Así la ve un alumno en su compu. {pregunta.tipo === 'tipeo' ? 'Podés tipear para probar.' : 'Podés tocar una opción para probar.'}
+          </DialogDescription>
         </DialogHeader>
         {/* El ancho sale del alto disponible, para que en 1366 × 768 el marco entre entero. */}
         <div className="fondo-pd mx-auto aspect-[1366/768] w-[min(100%,calc(62vh*1366/768))] overflow-hidden rounded-2xl ring-1 ring-foreground/10">

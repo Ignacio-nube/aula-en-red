@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { BarChart3, Feather, LogOut, Menu, MonitorPlay, Moon, Presentation, Puzzle, Settings, Users } from 'lucide-react';
+import { BarChart3, LogOut, Menu, MonitorPlay, MonitorUp, Moon, Presentation, Puzzle, Settings, Sun, SunMoon, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { BarraVidrio } from '@/components/pd/BarraVidrio';
 import { Fallo } from '@/components/pd/Fallo';
@@ -8,11 +8,13 @@ import { Logo } from '@/components/pd/Logo';
 import { PinLoader } from '@/components/pd/Pin';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -21,9 +23,10 @@ import { api, ErrorApi } from '@/lib/api';
 import { CLAVES, guardar, leer } from '@/lib/almacen';
 import { useAtencion, useDestacada, useEncuesta, useManos, usePreguntasAnonimas, usePresentacion, useSenales } from '@/lib/clase';
 import { emitirConAck, useJuego } from '@/lib/juego';
+import { useActividad } from '@/lib/actividad';
 import { cambiarLiviano, useLiviano } from '@/lib/liviano';
 import { prepararAudioConPrimerClic } from '@/lib/sonidos';
-import { cambiarTema, NOMBRE_TEMA, siguienteTema, useTema } from '@/lib/tema';
+import { cambiarTema, NOMBRE_TEMA, useTema } from '@/lib/tema';
 import { usePresencia, useSocket } from '@/lib/socket';
 import { cn } from '@/lib/utils';
 import { Ajustes } from './Ajustes';
@@ -82,10 +85,12 @@ function Panel({ token, onSalir }: { token: string; onSalir: () => void }) {
   const destacada = useDestacada(socket);
   const atencion = useAtencion(socket);
   const encuesta = useEncuesta(socket);
+  const actividad = useActividad(socket);
   const liviano = useLiviano();
   const { preferencia: tema } = useTema();
   const [ajustesAbierto, setAjustesAbierto] = useState(false);
-  const [pestana, setPestana] = useState('comisiones');
+  // Se arranca en Clase en vivo: es lo que se usa en el aula. Sin comisiones, ahí mismo invita a crear una.
+  const [pestana, setPestana] = useState('clase');
   const [presentacionElegida, setPresentacionElegida] = useState<number | null>(null);
 
   useEffect(prepararAudioConPrimerClic, []);
@@ -115,6 +120,7 @@ function Panel({ token, onSalir }: { token: string; onSalir: () => void }) {
 
   const controlar = useCallback<Profe['controlar']>((accion) => emitirConAck(socket, 'juego:control', accion), [socket]);
   const controlarPresentacion = useCallback<Profe['controlarPresentacion']>((accion) => emitirConAck(socket, 'presentacion:control', accion), [socket]);
+  const controlarActividad = useCallback<Profe['controlarActividad']>((accion) => emitirConAck(socket, 'actividad:control', accion), [socket]);
   const contexto = useMemo<Profe>(
     () => ({
       pedir,
@@ -132,10 +138,29 @@ function Panel({ token, onSalir }: { token: string; onSalir: () => void }) {
       destacada,
       atencion,
       encuesta,
+      actividad,
+      controlarActividad,
     }),
-    [pedir, presencia, juego, controlar, presentacion, controlarPresentacion, presentacionElegida, socket, senales, preguntas, destacada, atencion, encuesta],
+    [
+      pedir,
+      presencia,
+      juego,
+      controlar,
+      presentacion,
+      controlarPresentacion,
+      presentacionElegida,
+      socket,
+      senales,
+      preguntas,
+      destacada,
+      atencion,
+      encuesta,
+      actividad,
+      controlarActividad,
+    ],
   );
-  const hayClase = (juego.estado !== null && juego.estado.fase !== 'podio') || presentacion !== null || encuesta !== null || atencion !== null;
+  const hayClase =
+    (juego.estado !== null && juego.estado.fase !== 'podio') || presentacion !== null || encuesta !== null || atencion !== null || actividad.estado !== null;
   const totalConectados = Object.values(presencia).reduce((n, lista) => n + lista.length, 0);
 
   const cerrarSesion = () => {
@@ -150,15 +175,15 @@ function Panel({ token, onSalir }: { token: string; onSalir: () => void }) {
           <div className="mx-auto flex max-w-7xl items-center gap-x-3 px-4 py-2 sm:px-6 lg:gap-x-6">
             <div className="flex items-center gap-3">
               <Logo alto={46} />
-              {/* Entre 1024 y 1280 px no entra junto a las pestañas. */}
-              <span className="text-lg font-bold max-[360px]:hidden lg:max-xl:hidden">Panel del profe</span>
+              {/* Entre 1024 y 1536 px no entra junto a las pestañas y el botón de la pantalla grande. */}
+              <span className="text-lg font-bold whitespace-nowrap max-[360px]:hidden lg:max-2xl:hidden">Panel del profe</span>
             </div>
             {/* En el celu y la tablet, las pestañas van en la barra de abajo (BarraInferior). */}
             <TabsList className="hidden bg-muted/80 lg:flex lg:w-fit">
-              <TabsTrigger value="comisiones">
-                <Users data-icon="inline-start" />
-                <span className="max-xl:hidden">Comisiones y alumnos</span>
-                <span className="xl:hidden">Alumnos</span>
+              <TabsTrigger value="clase">
+                <MonitorPlay data-icon="inline-start" />
+                Clase en vivo
+                {hayClase && <span className="size-2 rounded-full bg-pd-resp-b" aria-label="(en curso)" />}
               </TabsTrigger>
               <TabsTrigger value="quizzes">
                 <Puzzle data-icon="inline-start" />
@@ -168,10 +193,10 @@ function Panel({ token, onSalir }: { token: string; onSalir: () => void }) {
                 <Presentation data-icon="inline-start" />
                 Presentaciones
               </TabsTrigger>
-              <TabsTrigger value="clase">
-                <MonitorPlay data-icon="inline-start" />
-                Clase en vivo
-                {hayClase && <span className="size-2 rounded-full bg-pd-resp-b" aria-label="(en curso)" />}
+              <TabsTrigger value="comisiones">
+                <Users data-icon="inline-start" />
+                <span className="max-xl:hidden">Comisiones y alumnos</span>
+                <span className="xl:hidden">Alumnos</span>
               </TabsTrigger>
               <TabsTrigger value="resultados">
                 <BarChart3 data-icon="inline-start" />
@@ -179,6 +204,11 @@ function Panel({ token, onSalir }: { token: string; onSalir: () => void }) {
               </TabsTrigger>
             </TabsList>
             <div className="ml-auto flex items-center gap-2">
+              {/* La pantalla grande se abre seguido: va a mano y no escondida en el menú. */}
+              <Button variant="outline" size="sm" className="max-sm:hidden" onClick={() => window.open('/pantalla', 'aula-pantalla')}>
+                <MonitorUp data-icon="inline-start" />
+                <span className="lg:max-xl:sr-only">Pantalla grande</span>
+              </Button>
               <Badge variant={totalConectados > 0 ? 'default' : 'secondary'}>
                 {totalConectados}
                 <span className="max-sm:sr-only lg:max-xl:sr-only">{totalConectados === 1 ? ' conectado' : ' conectados'}</span>
@@ -190,33 +220,59 @@ function Panel({ token, onSalir }: { token: string; onSalir: () => void }) {
                     <Menu />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                {/* Agrupado por para qué sirve: la clase, cómo se ve esta compu, y salir. */}
+                <DropdownMenuContent align="end" className="w-72">
                   <DropdownMenuGroup>
+                    <DropdownMenuLabel>La clase</DropdownMenuLabel>
                     <DropdownMenuItem onSelect={() => window.open('/pantalla', 'aula-pantalla')}>
-                      <MonitorPlay />
-                      Abrir la vista de pantalla grande
+                      <MonitorUp />
+                      <ItemConDetalle titulo="Abrir la pantalla grande" detalle="Para el proyector o el televisor" />
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setAjustesAbierto(true)}>
                       <Settings />
-                      Ajustes del curso
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={(ev) => {
-                        ev.preventDefault(); // el menú queda abierto para ver el cambio
-                        cambiarTema(siguienteTema(tema));
-                      }}
-                    >
-                      <Moon />
-                      Tema: {NOMBRE_TEMA[tema]}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => cambiarLiviano(!liviano)}>
-                      <Feather />
-                      {liviano ? 'Desactivar el modo liviano' : 'Modo liviano (para compus lentas)'}
+                      <ItemConDetalle titulo="Ajustes del curso" detalle="Nombre del curso y contraseñas" />
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
-                    <DropdownMenuItem onSelect={cerrarSesion}>
+                    <DropdownMenuLabel>En esta compu</DropdownMenuLabel>
+                    {/* El tema se elige con tres botones dentro del menú: se ve el cambio sin cerrarlo. */}
+                    <div role="radiogroup" aria-label="Tema" className="mx-1.5 mb-1 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+                      {(['claro', 'oscuro', 'auto'] as const).map((t) => {
+                        const Icono = t === 'claro' ? Sun : t === 'oscuro' ? Moon : SunMoon;
+                        return (
+                          <button
+                            key={t}
+                            type="button"
+                            role="radio"
+                            aria-checked={tema === t}
+                            onClick={() => cambiarTema(t)}
+                            className={cn(
+                              'flex flex-col items-center gap-1 rounded-lg py-1.5 text-xs font-semibold text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50',
+                              tema === t && 'bg-card text-foreground shadow-sm',
+                            )}
+                          >
+                            <Icono className="size-4" />
+                            {t === 'auto' ? 'Automático' : NOMBRE_TEMA[t]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <DropdownMenuItem
+                      role="menuitemcheckbox"
+                      aria-checked={liviano}
+                      onSelect={(ev) => {
+                        ev.preventDefault(); // el menú queda abierto para ver el cambio
+                        cambiarLiviano(!liviano);
+                      }}
+                    >
+                      <ItemConDetalle titulo="Modo liviano" detalle="Menos animaciones, para compus lentas" />
+                      <Switch checked={liviano} tabIndex={-1} aria-hidden className="pointer-events-none ml-auto" />
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem variant="destructive" onSelect={cerrarSesion}>
                       <LogOut />
                       Salir del panel
                     </DropdownMenuItem>
@@ -285,11 +341,20 @@ function Panel({ token, onSalir }: { token: string; onSalir: () => void }) {
   );
 }
 
+function ItemConDetalle({ titulo, detalle }: { titulo: string; detalle: string }) {
+  return (
+    <span className="flex min-w-0 flex-col">
+      <span className="font-medium">{titulo}</span>
+      <span className="text-xs text-muted-foreground">{detalle}</span>
+    </span>
+  );
+}
+
 const PESTANAS = [
-  { valor: 'comisiones', texto: 'Alumnos', icono: Users },
+  { valor: 'clase', texto: 'En vivo', icono: MonitorPlay },
   { valor: 'quizzes', texto: 'Quizzes', icono: Puzzle },
   { valor: 'presentaciones', texto: 'Presentar', icono: Presentation },
-  { valor: 'clase', texto: 'En vivo', icono: MonitorPlay },
+  { valor: 'comisiones', texto: 'Alumnos', icono: Users },
   { valor: 'resultados', texto: 'Resultados', icono: BarChart3 },
 ] as const;
 

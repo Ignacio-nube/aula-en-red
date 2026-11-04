@@ -1,5 +1,5 @@
 import { Router, type Response } from 'express';
-import { fechaSqlite, type Quiz } from '@aula/shared';
+import { equipo, fechaSqlite, type Quiz } from '@aula/shared';
 import { requireProfe } from '../auth';
 import { encuestasGuardadas } from '../clase/encuesta';
 import { db } from '../db';
@@ -20,20 +20,25 @@ function aCsv(filas: (string | number | null)[][]): string {
   return '﻿' + filas.map((f) => f.map(celda).join(';')).join('\r\n') + '\r\n';
 }
 
-function enviar(res: Response, nombre: string, filas: (string | number | null)[][]): void {
-  const limpio = nombre.replace(/[^\p{L}\p{N} _.-]+/gu, '').trim().slice(0, 80) || 'datos';
+export function enviar(res: Response, nombre: string, filas: (string | number | null)[][]): void {
+  const limpio =
+    nombre
+      .replace(/[^\p{L}\p{N} _.-]+/gu, '')
+      .trim()
+      .slice(0, 80) || 'datos';
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(limpio)}.csv`);
   res.send(aCsv(filas));
 }
 
-const fecha = (s: string) => fechaSqlite(s).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short', hourCycle: 'h23' });
+export const fecha = (s: string) => fechaSqlite(s).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short', hourCycle: 'h23' });
 
 interface FilaSesion {
   id: number;
   comision: string;
   quiz_json: string;
   iniciada_en: string;
+  equipos: number | null;
 }
 
 /** Una sesión: una fila por alumno, con cómo le fue en cada pregunta. */
@@ -42,15 +47,15 @@ csv.get('/resultados/sesiones/:id/csv', (req, res) => {
   const s = id
     ? db
         .prepare<[number], FilaSesion>(
-          'SELECT s.id, c.nombre AS comision, s.quiz_json, s.iniciada_en FROM sesiones s JOIN comisiones c ON c.id = s.comision_id WHERE s.id = ?',
+          'SELECT s.id, c.nombre AS comision, s.quiz_json, s.iniciada_en, s.equipos FROM sesiones s JOIN comisiones c ON c.id = s.comision_id WHERE s.id = ?',
         )
         .get(id)
     : undefined;
   if (!s) return error(res, 404, 'Esa sesión no existe.');
   const quiz = JSON.parse(s.quiz_json) as Quiz;
   const alumnos = db
-    .prepare<[number, number], { id: number; nombre: string; puntos: number; aciertos: number }>(
-      `SELECT a.id, a.nombre, COALESCE(SUM(r.puntos), 0) AS puntos, COALESCE(SUM(r.correcta), 0) AS aciertos
+    .prepare<[number, number], { id: number; nombre: string; puntos: number; aciertos: number; equipo: number | null }>(
+      `SELECT a.id, a.nombre, sa.equipo, COALESCE(SUM(r.puntos), 0) AS puntos, COALESCE(SUM(r.correcta), 0) AS aciertos
        FROM sesion_alumnos sa JOIN alumnos a ON a.id = sa.alumno_id
        LEFT JOIN respuestas r ON r.sesion_id = ? AND r.alumno_id = a.id
        WHERE sa.sesion_id = ? GROUP BY a.id ORDER BY puntos DESC, aciertos DESC, a.nombre COLLATE NOCASE`,
@@ -67,8 +72,9 @@ csv.get('/resultados/sesiones/:id/csv', (req, res) => {
     ['Quiz', quiz.titulo],
     ['Comisión', s.comision],
     ['Fecha', fecha(s.iniciada_en)],
+    ...(s.equipos !== null ? [['Equipos', s.equipos]] : []),
     [],
-    ['Puesto', 'Alumno', 'Puntos', 'Aciertos', ...quiz.preguntas.map((p, i) => `${i + 1}. ${p.texto}`)],
+    ['Puesto', 'Alumno', ...(s.equipos !== null ? ['Equipo'] : []), 'Puntos', 'Aciertos', ...quiz.preguntas.map((p, i) => `${i + 1}. ${p.texto}`)],
   ];
   let puesto = 0;
   alumnos.forEach((a, i) => {
@@ -76,12 +82,14 @@ csv.get('/resultados/sesiones/:id/csv', (req, res) => {
     filas.push([
       puesto,
       a.nombre,
+      ...(s.equipos !== null ? [a.equipo !== null ? equipo(a.equipo).nombre : ''] : []),
       a.puntos,
       a.aciertos,
       ...quiz.preguntas.map((p) => {
         if (!jugadas.has(p.id)) return 'no se jugó';
         const r = respuestas.find((x) => x.alumno_id === a.id && x.pregunta_id === p.id);
         if (!r || r.opcion_id === null) return 'sin responder';
+        if (p.tipo === 'tipeo') return r.correcta ? `llegó (+${r.puntos})` : `no llegó (+${r.puntos})`;
         return r.correcta ? `bien (+${r.puntos})` : 'mal';
       }),
     ]);

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Reorder, useDragControls } from 'motion/react';
-import { ChevronLeft, CircleAlert, Eye, GripVertical, ListChecks, ListOrdered, Plus, Save, SquareCheckBig, ToggleLeft } from 'lucide-react';
+import { ChevronLeft, CircleAlert, Eye, GripVertical, Save, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { LIMITES, NOMBRE_TIPO, type Quiz, type TipoPregunta } from '@aula/shared';
+import { LIMITES, NOMBRE_TIPO, TIPOS_PREGUNTA, type PreguntaImportada, type Quiz, type TipoPregunta } from '@aula/shared';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,8 +12,10 @@ import { mensajeDe } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Confirmar, type PedidoConfirmacion } from '../Confirmar';
 import { useProfe } from '../contexto';
-import { aBorrador, aEntrada, duplicarPregunta, preguntaNueva, problemas, type PreguntaBorrador, type QuizBorrador } from './borrador';
+import { aBorrador, aEntrada, deImportada, duplicarPregunta, estaVacia, preguntaNueva, problemas, type PreguntaBorrador, type QuizBorrador } from './borrador';
+import { ImportarPreguntas } from './ImportarPreguntas';
 import { EditorPregunta } from './EditorPregunta';
+import { INFO_TIPO } from './tipos';
 import { VistaPrevia } from './VistaPrevia';
 
 export function EditorQuiz({ id, onSalir }: { id: number; onSalir: () => void }) {
@@ -23,6 +25,7 @@ export function EditorQuiz({ id, onSalir }: { id: number; onSalir: () => void })
   const [elegida, setElegida] = useState(0);
   const [guardando, setGuardando] = useState(false);
   const [vistaPrevia, setVistaPrevia] = useState(false);
+  const [importando, setImportando] = useState(false);
   const [confirmacion, setConfirmacion] = useState<PedidoConfirmacion | null>(null);
 
   // Solo al abrir: si se recargara en cada render se pisaría lo que se está editando.
@@ -52,9 +55,7 @@ export function EditorQuiz({ id, onSalir }: { id: number; onSalir: () => void })
       const q = await pedir<Quiz>(`/quizzes/${id}`, { method: 'PUT', body: entrada });
       // El servidor normaliza (espacios, límites): se toma su versión como la guardada.
       const b = aBorrador(q);
-      setBorrador((actual) =>
-        actual ? { ...b, preguntas: b.preguntas.map((p, i) => ({ ...p, clave: actual.preguntas[i]?.clave ?? p.clave })) } : b,
-      );
+      setBorrador((actual) => (actual ? { ...b, preguntas: b.preguntas.map((p, i) => ({ ...p, clave: actual.preguntas[i]?.clave ?? p.clave })) } : b));
       setGuardadoJson(JSON.stringify(aEntrada(b)));
       toast.success('Guardaste el quiz');
       return true;
@@ -119,6 +120,24 @@ export function EditorQuiz({ id, onSalir }: { id: number; onSalir: () => void })
     setElegida(i);
   };
 
+  // Se agregan después de la que estás editando. Si el quiz recién se creó (una sola pregunta vacía), la reemplazan.
+  const importar = (nuevas: PreguntaImportada[], titulo: string | null) => {
+    const ps = nuevas.map(deImportada);
+    const reemplazar = preguntas.length === 1 && estaVacia(preguntas[0]!);
+    const i = reemplazar ? 0 : Math.min(elegida, preguntas.length - 1) + 1;
+    setBorrador((b) =>
+      b
+        ? {
+            ...b,
+            titulo: titulo && b.titulo === 'Quiz sin título' ? titulo : b.titulo,
+            preguntas: reemplazar ? ps : [...b.preguntas.slice(0, i), ...ps, ...b.preguntas.slice(i)],
+          }
+        : b,
+    );
+    setElegida(i);
+    toast.success(ps.length === 1 ? 'Agregaste 1 pregunta. Acordate de guardar.' : `Agregaste ${ps.length} preguntas. Acordate de guardar.`);
+  };
+
   const incompletas = preguntas.filter((p) => problemas(p).length > 0).length;
 
   return (
@@ -177,30 +196,45 @@ export function EditorQuiz({ id, onSalir }: { id: number; onSalir: () => void })
             onReorder={(ps) => {
               const clave = actual?.clave;
               cambiarPreguntas(() => ps);
-              setElegida(Math.max(0, ps.findIndex((p) => p.clave === clave)));
+              setElegida(
+                Math.max(
+                  0,
+                  ps.findIndex((p) => p.clave === clave),
+                ),
+              );
             }}
-            className="flex max-h-[52vh] flex-col gap-1.5 overflow-y-auto px-3"
+            className="flex max-h-[max(9rem,calc(100dvh-30rem))] flex-col gap-1.5 overflow-y-auto px-3"
           >
             {preguntas.map((p, i) => (
               <ItemPregunta key={p.clave} pregunta={p} numero={i + 1} activa={p.clave === actual?.clave} onElegir={() => setElegida(i)} />
             ))}
           </Reorder.Group>
-          <div className="grid grid-cols-2 gap-2 px-3">
-            <Button variant="secondary" size="sm" onClick={() => agregar('multiple')}>
-              <Plus data-icon="inline-start" />
-              Opción múltiple
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => agregar('vf')}>
-              <Plus data-icon="inline-start" />
-              Verdadero/Falso
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => agregar('varias')}>
-              <Plus data-icon="inline-start" />
-              Varias correctas
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => agregar('ordenar')}>
-              <Plus data-icon="inline-start" />
-              Ordenar pasos
+          {/* Agregar: cada tipo con su ícono y qué es; va después de la pregunta elegida. */}
+          <div className="flex flex-col gap-2 border-t px-3 pt-3">
+            <p className="px-2 text-sm font-semibold text-muted-foreground">Agregar después de la {Math.min(elegida, preguntas.length - 1) + 1}</p>
+            <ul className="grid grid-cols-2 gap-1">
+              {TIPOS_PREGUNTA.map((t) => {
+                const Icono = INFO_TIPO[t].icono;
+                return (
+                  <li key={t} className={cn(t === 'tipeo' && 'col-span-2')}>
+                    <button
+                      type="button"
+                      title={INFO_TIPO[t].descripcion}
+                      onClick={() => agregar(t)}
+                      className="flex w-full items-center gap-2 rounded-xl px-1.5 py-1 text-left text-sm font-semibold transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-pd-celeste-claro text-pd-celeste-oscuro">
+                        <Icono className="size-4" />
+                      </span>
+                      <span className="min-w-0 leading-tight">{NOMBRE_TIPO[t]}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <Button variant="outline" onClick={() => setImportando(true)}>
+              <Sparkles data-icon="inline-start" />
+              Importar varias (con Claude)
             </Button>
           </div>
         </Card>
@@ -229,24 +263,24 @@ export function EditorQuiz({ id, onSalir }: { id: number; onSalir: () => void })
       </div>
 
       {actual && (
-        <VistaPrevia abierta={vistaPrevia} onCerrar={() => setVistaPrevia(false)} pregunta={actual} numero={preguntas.indexOf(actual)} total={preguntas.length} />
+        <VistaPrevia
+          abierta={vistaPrevia}
+          onCerrar={() => setVistaPrevia(false)}
+          pregunta={actual}
+          numero={preguntas.indexOf(actual)}
+          total={preguntas.length}
+        />
       )}
+      <ImportarPreguntas abierto={importando} onCerrar={() => setImportando(false)} yaHay={preguntas.length} onImportar={importar} />
       <Confirmar pedido={confirmacion} onCerrar={() => setConfirmacion(null)} />
     </div>
   );
 }
 
-const ICONO_TIPO: Record<TipoPregunta, typeof ListChecks> = {
-  multiple: ListChecks,
-  vf: ToggleLeft,
-  varias: SquareCheckBig,
-  ordenar: ListOrdered,
-};
-
 function ItemPregunta({ pregunta, numero, activa, onElegir }: { pregunta: PreguntaBorrador; numero: number; activa: boolean; onElegir: () => void }) {
   const arrastre = useDragControls();
   const faltan = problemas(pregunta).length > 0;
-  const Icono = ICONO_TIPO[pregunta.tipo];
+  const Icono = INFO_TIPO[pregunta.tipo].icono;
   return (
     <Reorder.Item
       value={pregunta}
@@ -266,7 +300,7 @@ function ItemPregunta({ pregunta, numero, activa, onElegir }: { pregunta: Pregun
       >
         <GripVertical className="size-4" />
       </button>
-      <button type="button" onClick={onElegir} className="flex min-w-0 flex-1 items-center gap-2 py-2.5 pr-3 text-left outline-none">
+      <button type="button" onClick={onElegir} className="flex min-w-0 flex-1 items-center gap-2 rounded-xl py-2.5 pr-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
         <span className="w-5 shrink-0 text-sm font-bold text-muted-foreground tabular-nums">{numero}</span>
         <span className={cn('min-w-0 flex-1 truncate text-sm font-medium', !pregunta.texto && 'text-muted-foreground italic')}>
           {pregunta.texto || 'Sin texto'}

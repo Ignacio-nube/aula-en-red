@@ -16,6 +16,8 @@ function oscuro(): boolean {
 function aplicar() {
   document.documentElement.classList.toggle('dark', oscuro());
   document.documentElement.style.colorScheme = oscuro() ? 'dark' : 'light';
+  // La barra del navegador del celu, del mismo color que el fondo.
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', oscuro() ? '#0d141c' : '#f6f8fa');
   oyentes.forEach((f) => f());
 }
 aplicar();

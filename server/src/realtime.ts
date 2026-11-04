@@ -1,15 +1,7 @@
 import type { Server as HttpServer } from 'node:http';
 import { Server } from 'socket.io';
-import type {
-  Ack,
-  AlumnoConectado,
-  ClientToServerEvents,
-  Presencia,
-  ServerToClientEvents,
-  SocketAuth,
-  SocketData,
-} from '@aula/shared';
-import { alumnoDeToken, esTokenProfe } from './auth';
+import type { Ack, AlumnoConectado, ClientToServerEvents, Presencia, ServerToClientEvents, SocketAuth, SocketData } from '@aula/shared';
+import { alumnoDeToken, borrarToken, esTokenProfe, msRestantesSesion } from './auth';
 import { buscarAlumno } from './db/alumnos';
 import { controlarEncuesta, emitirEncuesta, encuestaPara, responderEncuesta } from './clase/encuesta';
 import { bajarMano, bajarTodas, emitirManos, filaDeManos, levantarMano, miMano } from './clase/manos';
@@ -27,7 +19,8 @@ import {
   preguntasPendientes,
 } from './clase/participacion';
 import { controlarPresentacion, presentacionPara } from './clase/presentacion';
-import { alConectarAlumno, alDesconectarAlumno, controlar, estadoPara, partidaActual } from './juego/control';
+import { alConectarAlumno, alDesconectarAlumno, controlar, estadoPara, partidaActual, progresoTipeo } from './juego/control';
+import { actividadAlConectar, actividadAlDesconectar, controlarActividad, enviarActividad, estadoActividadPara } from './actividades/control';
 
 type Io = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 
@@ -59,6 +52,7 @@ export function expulsarAlumno(alumnoId: number): void {
   conectados.delete(alumnoId);
   emitirPresencia();
   alDesconectarAlumno();
+  actividadAlDesconectar(alumnoId);
   bajarMano(alumnoId);
   alSalirAlumno(alumnoId);
   emitirEncuesta();
@@ -104,7 +98,9 @@ export function iniciarRealtime(http: HttpServer): Io {
       // Reconexión: entra (o vuelve) al juego y recibe el estado completo al instante.
       const datos = { id: alumno.id, comisionId: alumno.comisionId, nombre: alumno.nombre, avatar: alumno.avatar };
       alConectarAlumno(datos);
+      actividadAlConectar(datos);
       socket.emit('juego:estado', estadoPara('alumno', alumno.id, alumno.comisionId));
+      socket.emit('actividad:estado', estadoActividadPara('alumno', alumno.id, alumno.comisionId));
       socket.emit('presentacion:estado', presentacionPara('alumno', alumno.comisionId));
       socket.emit('mano:estado', miMano(alumno.id));
       socket.emit('senales:mias', misSenales(alumno.id));
@@ -114,10 +110,14 @@ export function iniciarRealtime(http: HttpServer): Io {
       socket.on('senal:cambiar', (cambio, ack) => ackSeguro(ack)(cambiarSenal(alumno.id, cambio?.tipo, cambio?.activa === true)));
       socket.on('pregunta:enviar', (texto, ack) => ackSeguro(ack)(enviarPregunta(alumno.id, texto)));
       socket.on('encuesta:responder', (valor, ack) => ackSeguro(ack)(responderEncuesta(alumno.id, alumno.comisionId, valor)));
+      socket.on('actividad:enviar', (envio, ack) => ackSeguro(ack)(enviarActividad(alumno.id, alumno.comisionId, envio)));
 
       socket.on('mano:cambiar', (arriba, ack) => {
-        if (arriba === true) levantarMano(datos);
-        else bajarMano(alumno.id);
+        if (arriba === true) {
+          // Con el nombre y el emoji de ahora: el alumno pudo habérselos cambiado después de conectarse.
+          const fila = buscarAlumno(alumno.id);
+          levantarMano(fila ? { ...datos, nombre: fila.nombre, avatar: fila.avatar } : datos);
+        } else bajarMano(alumno.id);
         ackSeguro(ack)({ ok: true });
       });
 
@@ -130,7 +130,17 @@ export function iniciarRealtime(http: HttpServer): Io {
         responder(partida.responder(alumno.id, respuesta));
       });
 
+      socket.on('juego:tipeo', (progreso, ack) => ackSeguro(ack)(progresoTipeo(alumno.id, alumno.comisionId, progreso)));
+
+      // A las 2 horas de haber ingresado, la sesión se cierra aunque esté conectado.
+      const vence = setTimeout(() => {
+        borrarToken(auth.token!);
+        socket.emit('sesion:expirada');
+        socket.disconnect(true);
+      }, msRestantesSesion(auth.token!));
+
       socket.on('disconnect', () => {
+        clearTimeout(vence);
         const abiertos = conectados.get(alumno.id);
         if (!abiertos) return;
         abiertos.delete(socket.id);
@@ -138,6 +148,7 @@ export function iniciarRealtime(http: HttpServer): Io {
           conectados.delete(alumno.id);
           emitirPresencia();
           alDesconectarAlumno();
+          actividadAlDesconectar(alumno.id);
           if (miMano(alumno.id).arriba) emitirManos();
           emitirEncuesta();
         }
@@ -162,6 +173,7 @@ export function iniciarRealtime(http: HttpServer): Io {
       socket.emit('pantalla:destacada', preguntaDestacada());
       socket.emit('atencion:estado', atencionPara());
       socket.emit('encuesta:estado', encuestaPara('profe'));
+      socket.emit('actividad:estado', estadoActividadPara('profe'));
 
       // El token se revisa en cada acción: si el profe cerró sesión en otra pestaña, deja de valer.
       const comoProfe =
@@ -183,6 +195,7 @@ export function iniciarRealtime(http: HttpServer): Io {
       socket.on('preguntas:accion', comoProfe(accionPreguntas));
       socket.on('atencion:cambiar', comoProfe(cambiarAtencion));
       socket.on('encuesta:control', comoProfe(controlarEncuesta));
+      socket.on('actividad:control', comoProfe(controlarActividad));
       socket.on(
         'manos:bajar',
         comoProfe((alumnoId: number | null) => {
@@ -202,6 +215,7 @@ export function iniciarRealtime(http: HttpServer): Io {
     socket.emit('presentacion:estado', presentacionPara('pantalla'));
     socket.emit('pantalla:destacada', preguntaDestacada());
     socket.emit('encuesta:estado', encuestaPara('pantalla'));
+    socket.emit('actividad:estado', estadoActividadPara('pantalla'));
   });
 
   return io;
