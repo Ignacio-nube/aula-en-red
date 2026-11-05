@@ -63,6 +63,7 @@ export function PreparacionClase() {
   const [bonus, setBonus] = useState(true);
   const [porEquipos, setPorEquipos] = useState(false);
   const [cantidadEquipos, setCantidadEquipos] = useState(2);
+  const [facil, setFacil] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
   const cargar = useCallback(async () => {
@@ -111,7 +112,14 @@ export function PreparacionClase() {
   const iniciar = async () => {
     if (!quizId || !comisionId) return;
     setEnviando(true);
-    const r = await controlar({ tipo: 'iniciar', quizId, comisionId: Number(comisionId), bonusRacha: bonus, equipos: porEquipos ? cantidadEquipos : null });
+    const r = await controlar({
+      tipo: 'iniciar',
+      quizId,
+      comisionId: Number(comisionId),
+      bonusRacha: bonus,
+      equipos: porEquipos ? cantidadEquipos : null,
+      facil: quizElegido?.tieneTipeo === true && facil,
+    });
     if (!r.ok) toast.error(r.error);
     setEnviando(false);
   };
@@ -405,6 +413,15 @@ export function PreparacionClase() {
                       </Field>
                     )}
                   </div>
+                  {quizElegido?.tieneTipeo && (
+                    <Field orientation="horizontal" className="max-w-lg">
+                      <Switch id="quiz-tipeo-facil" checked={facil} onCheckedChange={setFacil} />
+                      <FieldContent>
+                        <FieldLabel htmlFor="quiz-tipeo-facil">Carreras de tipeo en modo fácil</FieldLabel>
+                        <FieldDescription>Sin mayúsculas ni tildes, para los que recién empiezan.</FieldDescription>
+                      </FieldContent>
+                    </Field>
+                  )}
                 </div>
 
                 <BarraEmpezar
@@ -413,7 +430,7 @@ export function PreparacionClase() {
                       ? 'Elegí la comisión arriba'
                       : !quizElegido
                         ? 'Elegí un quiz'
-                        : `${quizElegido.titulo}, comisión ${nombreComision ?? ''}${porEquipos ? `, en ${cantidadEquipos} equipos` : ''}`
+                        : `${quizElegido.titulo}, comisión ${nombreComision ?? ''}${porEquipos ? `, en ${cantidadEquipos} equipos` : ''}${quizElegido.tieneTipeo && facil ? ', tipeo fácil' : ''}`
                   }
                   falta={!quizElegido || !comisionId}
                   texto="Abrir la sala de espera"

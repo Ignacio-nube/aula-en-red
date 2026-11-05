@@ -114,7 +114,7 @@ export interface EstadoJuego {
 }
 
 export type AccionJuego =
-  | { tipo: 'iniciar'; quizId: number; comisionId: number; bonusRacha: boolean; equipos: number | null }
+  | { tipo: 'iniciar'; quizId: number; comisionId: number; bonusRacha: boolean; equipos: number | null; /** Carreras de tipeo sin tildes ni mayúsculas. */ facil?: boolean }
   | { tipo: 'retomar'; sesionId: number }
   | { tipo: 'descartar'; sesionId: number }
   | { tipo: 'siguiente' }

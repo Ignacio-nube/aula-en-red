@@ -77,6 +77,8 @@ export interface QuizResumen {
   cantidadPreguntas: number;
   /** Cantidad de preguntas con algo por completar: si es > 0 no se puede jugar. */
   problemas: number;
+  /** Tiene alguna carrera de tipeo (para ofrecer el modo fácil al empezar). */
+  tieneTipeo: boolean;
   actualizadoEn: string;
 }
 

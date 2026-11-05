@@ -2,6 +2,7 @@ import {
   MAX_EQUIPOS,
   MIN_EQUIPOS,
   problemasPregunta,
+  textoFacil,
   type Ack,
   type AccionJuego,
   type AlumnoConectado,
@@ -120,6 +121,11 @@ export function controlar(accion: AccionJuego): Ack {
       const equipos = accion.equipos ?? null;
       if (equipos !== null && (!Number.isInteger(equipos) || equipos < MIN_EQUIPOS || equipos > MAX_EQUIPOS)) {
         return { ok: false, error: `Se puede jugar con ${MIN_EQUIPOS} a ${MAX_EQUIPOS} equipos.` };
+      }
+
+      // Modo fácil: las carreras de tipeo de esta sesión van en minúsculas y sin tildes (la copia guardada ya queda así).
+      if (accion.facil === true) {
+        for (const p of quiz.preguntas) if (p.tipo === 'tipeo') p.texto = textoFacil(p.texto);
       }
 
       cerrarPartida();

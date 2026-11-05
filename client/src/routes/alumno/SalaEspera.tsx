@@ -173,8 +173,10 @@ function Espera({
 }) {
   const primerNombre = alumno.nombre.split(' ')[0];
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 pb-20 text-center bajo:pb-14">
-      <div data-koi-avoid className="flex flex-col items-center gap-6 bajo:gap-3">
+    // Centrado con my-auto (no justify-center): si no entra en pantallas bajas, arranca desde arriba y se
+    // scrollea, en vez de quedar el pin cortado debajo del encabezado. El pt deja lugar al vaivén del pin.
+    <div className="relative flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 pt-4 pb-20 text-center bajo:pb-14">
+      <div data-koi-avoid className="my-auto flex flex-col items-center gap-6 bajo:gap-3">
         <motion.button
           type="button"
           onClick={onEditar}

@@ -75,6 +75,7 @@ export function listarQuizzes(): QuizResumen[] {
       descripcion: f.descripcion,
       cantidadPreguntas: quiz.preguntas.length,
       problemas: quiz.preguntas.filter((p) => problemasPregunta(p).length > 0).length,
+      tieneTipeo: quiz.preguntas.some((p) => p.tipo === 'tipeo'),
       actualizadoEn: f.actualizado_en,
     };
   });
