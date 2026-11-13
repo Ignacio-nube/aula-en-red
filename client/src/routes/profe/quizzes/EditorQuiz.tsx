@@ -223,7 +223,7 @@ export function EditorQuiz({ id, onSalir }: { id: number; onSalir: () => void })
                       onClick={() => agregar(t)}
                       className="flex w-full items-center gap-2 rounded-xl px-1.5 py-1 text-left text-sm font-semibold transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
-                      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-pd-celeste-claro text-pd-celeste-oscuro">
+                      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-pd-celeste-claro text-acento">
                         <Icono className="size-4" />
                       </span>
                       <span className="min-w-0 leading-tight">{NOMBRE_TIPO[t]}</span>
@@ -300,7 +300,11 @@ function ItemPregunta({ pregunta, numero, activa, onElegir }: { pregunta: Pregun
       >
         <GripVertical className="size-4" />
       </button>
-      <button type="button" onClick={onElegir} className="flex min-w-0 flex-1 items-center gap-2 rounded-xl py-2.5 pr-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+      <button
+        type="button"
+        onClick={onElegir}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-xl py-2.5 pr-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
         <span className="w-5 shrink-0 text-sm font-bold text-muted-foreground tabular-nums">{numero}</span>
         <span className={cn('min-w-0 flex-1 truncate text-sm font-medium', !pregunta.texto && 'text-muted-foreground italic')}>
           {pregunta.texto || 'Sin texto'}

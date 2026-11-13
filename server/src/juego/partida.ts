@@ -7,6 +7,8 @@ import {
   PPM_MAXIMO,
   puntajeTipeo,
   promedioEquipo,
+  MAX_EQUIPOS,
+  MIN_EQUIPOS,
   EXTENSION_MS,
   mezclar,
   puntaje,
@@ -99,8 +101,8 @@ export class Partida {
     private readonly avisar: () => void,
     /** Quién de la comisión está conectado ahora. */
     private readonly estaConectado: (alumnoId: number) => boolean,
-    /** Cantidad de equipos, o null para jugar de a uno. */
-    readonly cantidadEquipos: number | null = null,
+    /** Cantidad de equipos, o null para jugar de a uno. Se puede cambiar en la sala de espera. */
+    public cantidadEquipos: number | null = null,
   ) {
     this.modoRanking = modoRanking;
   }
@@ -156,6 +158,59 @@ export class Partida {
         updEquipo.run(p.equipo, this.sesionId, p.alumnoId);
       });
     })();
+    this.avisar();
+    return { ok: true };
+  }
+
+  /**
+   * Deja los equipos parejos sin desarmarlos: ubica a los que quedaron sin equipo (si se sacó uno) y pasa
+   * gente del más grande al más chico hasta que ninguno le lleve más de uno a otro. Cuenta a los conectados,
+   * que son los que de verdad juegan.
+   */
+  private emparejar(): void {
+    const n = this.cantidadEquipos ?? 1;
+    const todos = [...this.participantes.values()];
+    const tamanos = () => Array.from({ length: n }, (_, i) => todos.filter((p) => p.equipo === i && this.estaConectado(p.alumnoId)).length);
+    const cambiados = new Set<Participante>();
+    for (const p of todos) {
+      if (p.equipo !== null && p.equipo < n) continue;
+      const t = tamanos();
+      p.equipo = t.indexOf(Math.min(...t));
+      cambiados.add(p);
+    }
+    // Como mucho una pasada por participante: cada movimiento achica la diferencia.
+    for (let vuelta = 0; vuelta < todos.length; vuelta++) {
+      const t = tamanos();
+      const mayor = t.indexOf(Math.max(...t));
+      const menor = t.indexOf(Math.min(...t));
+      if (t[mayor]! - t[menor]! <= 1) break;
+      const candidatos = todos.filter((p) => p.equipo === mayor && this.estaConectado(p.alumnoId));
+      const p = candidatos[Math.floor(Math.random() * candidatos.length)]!;
+      p.equipo = menor;
+      cambiados.add(p);
+    }
+    db.transaction(() => cambiados.forEach((p) => updEquipo.run(p.equipo, this.sesionId, p.alumnoId)))();
+  }
+
+  /** Empareja los equipos moviendo a los menos posibles (solo en la sala de espera). */
+  emparejarEquipos(): Ack {
+    if (this.cantidadEquipos === null) return { ok: false, error: 'Este quiz se juega de a uno.' };
+    if (this.fase !== 'lobby') return { ok: false, error: 'Los equipos se arman antes de empezar.' };
+    this.emparejar();
+    this.avisar();
+    return { ok: true };
+  }
+
+  /** Cambia cuántos equipos hay (solo en la sala de espera) y reacomoda a los que haga falta. */
+  cambiarCantidadEquipos(cantidad: number): Ack {
+    if (this.cantidadEquipos === null) return { ok: false, error: 'Este quiz se juega de a uno.' };
+    if (this.fase !== 'lobby') return { ok: false, error: 'Los equipos se arman antes de empezar.' };
+    if (!Number.isInteger(cantidad) || cantidad < MIN_EQUIPOS || cantidad > MAX_EQUIPOS) {
+      return { ok: false, error: `Se puede jugar con ${MIN_EQUIPOS} a ${MAX_EQUIPOS} equipos.` };
+    }
+    this.cantidadEquipos = cantidad;
+    db.prepare('UPDATE sesiones SET equipos = ? WHERE id = ?').run(cantidad, this.sesionId);
+    this.emparejar();
     this.avisar();
     return { ok: true };
   }

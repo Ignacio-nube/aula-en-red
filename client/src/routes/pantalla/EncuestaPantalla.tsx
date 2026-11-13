@@ -20,7 +20,7 @@ export function EncuestaPantalla({ encuesta: e }: { encuesta: EncuestaEnVivo }) 
         <div className="flex flex-col items-center rounded-[2rem] bg-card px-[2vw] py-[2vh] shadow-[var(--pd-sombra-flotante)]">
           <motion.span
             key={e.respondieron}
-            className="text-[clamp(2.6rem,5vw,6rem)] leading-none font-extrabold text-pd-celeste-oscuro tabular-nums"
+            className="text-[clamp(2.6rem,5vw,6rem)] leading-none font-extrabold text-acento tabular-nums"
             initial={{ scale: 1.4 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 400, damping: 15 }}
@@ -107,7 +107,7 @@ export function PreguntaDestacada({ texto }: { texto: string | null }) {
             transition={{ type: 'spring', stiffness: 260, damping: 22 }}
           >
             <figcaption className="flex items-center gap-3 text-[clamp(1.1rem,1.8vw,2.2rem)] font-semibold text-muted-foreground">
-              <MessageCircleQuestion className="size-[1.4em] text-pd-celeste-oscuro" />
+              <MessageCircleQuestion className="size-[1.4em] text-acento" />
               Pregunta anónima
             </figcaption>
             <blockquote className="text-[clamp(2rem,4.6vw,5.6rem)] leading-[1.1] font-extrabold text-balance">“{texto}”</blockquote>

@@ -83,7 +83,7 @@ function Votar({ estado, socket }: { estado: EstadoDe<'galeria'>; socket: Socket
       </div>
 
       {v.esMio ? (
-        <p className="mt-4 rounded-full bg-pd-celeste-claro px-5 py-2 text-lg font-bold text-pd-celeste-oscuro dark:bg-pd-celeste-oscuro/30 dark:text-pd-celeste">
+        <p className="mt-4 rounded-full bg-pd-celeste-claro px-5 py-2 text-lg font-bold text-acento dark:bg-pd-celeste-oscuro/30 dark:text-pd-celeste">
           ¡Es tu dibujo! Mirá cómo lo votan
         </p>
       ) : (
@@ -136,7 +136,7 @@ function Podio({ estado, alumno }: { estado: EstadoDe<'galeria'>; alumno: Alumno
     <div className="m-auto flex w-full max-w-3xl flex-col items-center gap-4 text-center">
       <h1 className="text-4xl font-extrabold sm:text-5xl">¡Terminó la votación!</h1>
       {mio && (
-        <p className="rounded-full bg-pd-celeste-claro px-5 py-2 text-lg font-bold text-pd-celeste-oscuro dark:bg-pd-celeste-oscuro/30 dark:text-pd-celeste">
+        <p className="rounded-full bg-pd-celeste-claro px-5 py-2 text-lg font-bold text-acento dark:bg-pd-celeste-oscuro/30 dark:text-pd-celeste">
           ¡Tu dibujo quedó en el puesto {mio.puesto}!
         </p>
       )}

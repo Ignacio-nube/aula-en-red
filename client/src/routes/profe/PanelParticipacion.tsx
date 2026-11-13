@@ -135,11 +135,11 @@ export function PanelParticipacion({ manos, socket, senales, preguntas, destacad
                   <Contador emoji="🐢" n={senales.despacio} etiqueta="piden más despacio" />
                   {preguntas.length > 0 && (
                     <span className="flex items-center gap-1 px-1 font-bold tabular-nums" aria-label={`${preguntas.length} preguntas anónimas`}>
-                      <MessageCircleQuestion className="size-4 text-pd-celeste-oscuro" />
+                      <MessageCircleQuestion className="size-4 text-acento" />
                       {preguntas.length}
                     </span>
                   )}
-                  {destacada && <MonitorPlay className="size-4 text-pd-celeste-oscuro" aria-label="Hay una pregunta en la pantalla" />}
+                  {destacada && <MonitorPlay className="size-4 text-acento" aria-label="Hay una pregunta en la pantalla" />}
                   <ChevronDown className={cn('ml-1 size-4 shrink-0 text-muted-foreground transition-transform', !abierto && 'rotate-180')} />
                 </button>
                 {abierto && (
@@ -179,11 +179,11 @@ export function PanelParticipacion({ manos, socket, senales, preguntas, destacad
                           onClick={() => setVerPreguntas(true)}
                           className="flex items-center gap-2 rounded-xl bg-muted/60 py-1.5 pr-2 pl-2 text-left text-sm outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
                         >
-                          <MessageCircleQuestion className="size-5 text-pd-celeste-oscuro" />
+                          <MessageCircleQuestion className="size-5 text-acento" />
                           <span className="min-w-0 flex-1">
                             <strong className="tabular-nums">{preguntas.length}</strong> {preguntas.length === 1 ? 'pregunta anónima' : 'preguntas anónimas'}
                           </span>
-                          <span className="text-xs font-semibold text-pd-celeste-oscuro">Ver</span>
+                          <span className="text-xs font-semibold text-acento">Ver</span>
                         </button>
                       )}
                       {destacada && (

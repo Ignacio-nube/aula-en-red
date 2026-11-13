@@ -202,7 +202,7 @@ export function Presentaciones() {
         <ul className="flex flex-col gap-2">
           {subidas.map((s) => (
             <li key={s.clave} className="flex items-center gap-4 rounded-2xl bg-card px-4 py-3 shadow-[var(--pd-sombra-tarjeta)]">
-              <FileText className="size-5 text-pd-celeste-oscuro" />
+              <FileText className="size-5 text-acento" />
               <span className="min-w-0 flex-1 truncate font-medium">{s.nombre}</span>
               <span className="w-28 text-right text-sm text-muted-foreground tabular-nums">
                 {s.progreso === null ? 'Leyendo el PDF…' : s.progreso < 100 ? `Subiendo ${s.progreso}%` : 'Guardando…'}
@@ -228,8 +228,8 @@ export function Presentaciones() {
               </EmptyMedia>
               <EmptyTitle>Subí tu primera presentación</EmptyTitle>
               <EmptyDescription>
-                Guardá tus diapositivas como PDF (en PowerPoint: Archivo → Exportar → PDF) y arrastralas acá. Quedan guardadas en esta compu
-                para usarlas cuando quieras.
+                Guardá tus diapositivas como PDF (en PowerPoint: Archivo → Exportar → PDF) y arrastralas acá. Quedan guardadas en esta compu para usarlas cuando
+                quieras.
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>{botonSubir}</EmptyContent>
@@ -259,7 +259,7 @@ export function Presentaciones() {
 
       {arrastrando && (
         <div className="pointer-events-none absolute -inset-2 z-10 grid place-items-center rounded-3xl border-2 border-dashed border-pd-celeste bg-pd-celeste-claro/80">
-          <p className="flex items-center gap-2 text-xl font-bold text-pd-celeste-oscuro">
+          <p className="flex items-center gap-2 text-xl font-bold text-acento">
             <Upload className="size-6" />
             Soltá los PDFs para subirlos
           </p>
@@ -334,9 +334,7 @@ function TarjetaPresentacion({
         ) : (
           <Skeleton className="mx-auto h-full w-3/4 rounded-md" />
         )}
-        {enVivo && (
-          <span className="absolute top-2 left-2 rounded-full bg-pd-resp-b px-2.5 py-0.5 text-xs font-bold text-white">En vivo</span>
-        )}
+        {enVivo && <span className="absolute top-2 left-2 rounded-full bg-pd-resp-b px-2.5 py-0.5 text-xs font-bold text-white">En vivo</span>}
       </button>
       <div className="flex items-start gap-2 px-4 pt-3 pb-4">
         <div className="min-w-0 flex-1">

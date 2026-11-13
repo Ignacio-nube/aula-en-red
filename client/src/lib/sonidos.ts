@@ -85,6 +85,30 @@ export const sonidos = {
   cuenta(final = false) {
     if (!preparado()) return;
     nota(final ? 880 : 520, 0, final ? 0.4 : 0.18, { tipo: 'square', volumen: 0.07 });
+    // El golpe grave de cada número.
+    nota(final ? 98 : 82, 0, 0.32, { volumen: 0.24 });
+  },
+  /** Se revela la respuesta correcta: tres notas que suben. */
+  acierto() {
+    if (!preparado()) return;
+    [659.25, 783.99, 1046.5].forEach((f, i) => nota(f, i * 0.07, 0.3, { tipo: 'triangle', volumen: 0.13 }));
+  },
+  /** Alguien pasa a otro en el ranking. */
+  adelanto() {
+    if (!preparado()) return;
+    nota(440, 0, 0.12, { tipo: 'triangle', volumen: 0.1 });
+    nota(659.25, 0.07, 0.12, { tipo: 'triangle', volumen: 0.1 });
+    nota(880, 0.14, 0.22, { tipo: 'triangle', volumen: 0.1 });
+  },
+  /** El suspenso antes del ganador: golpes cada vez más seguidos y más fuertes, durante `segundos`. */
+  redobleLargo(segundos: number) {
+    if (!preparado()) return;
+    let t = 0;
+    while (t < segundos) {
+      const avance = t / segundos;
+      nota(150 + avance * 70, t, 0.07, { tipo: 'triangle', volumen: 0.05 + avance * 0.11 });
+      t += 0.11 - avance * 0.07;
+    }
   },
   /** Últimos segundos de la pregunta. */
   tic() {

@@ -94,7 +94,7 @@ export function Diapositiva({ doc, url, pagina, precargar = [], className, clase
         aria-label={etiqueta ?? `Diapositiva ${pagina}`}
         className={cn('overflow-hidden bg-white [&>canvas]:block', !dibujada && 'hidden', claseMarco)}
       />
-      {!dibujada && !fallo && <Spinner className="absolute size-8 text-pd-celeste-oscuro" />}
+      {!dibujada && !fallo && <Spinner className="absolute size-8 text-acento" />}
       {fallo && <p className="absolute px-4 text-center text-muted-foreground">No se pudo mostrar esta diapositiva.</p>}
     </div>
   );

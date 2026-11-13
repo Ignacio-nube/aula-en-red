@@ -31,9 +31,19 @@ type Actividad = 'presentacion' | 'quiz' | TipoActividad;
 
 const claseOpcion = (elegida: boolean, habilitada = true) =>
   cn(
-    'flex rounded-2xl bg-card p-4 text-left ring-1 ring-border transition-[box-shadow,background-color] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60',
-    elegida ? 'bg-secondary ring-2 ring-pd-celeste' : habilitada && 'hover:bg-muted',
+    'flex rounded-2xl bg-card p-4 text-left ring-1 ring-border transition-[box-shadow,background-color,transform] duration-200 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60',
+    // Las opciones se levantan al pasar el mouse y se hunden al tocarlas; la elegida queda levantada.
+    habilitada && 'hover:-translate-y-0.5 hover:shadow-[var(--pd-sombra-tarjeta)] active:translate-y-0 active:scale-[0.98]',
+    elegida ? 'bg-secondary shadow-[var(--pd-sombra-tarjeta)] ring-2 ring-pd-celeste' : habilitada && 'hover:bg-muted',
   );
+
+/** Cómo quedarían repartidos los que ya están conectados, para elegir la cantidad de equipos sabiendo. */
+function repartoEquipos(alumnos: number, equipos: number): string {
+  if (alumnos === 0) return 'Se arman solos a medida que entran.';
+  if (alumnos < equipos) return `Hay ${alumnos === 1 ? '1 conectado' : `${alumnos} conectados`}: son menos que los equipos.`;
+  const base = Math.floor(alumnos / equipos);
+  return alumnos % equipos === 0 ? `Con ${alumnos} conectados: ${base} por equipo.` : `Con ${alumnos} conectados: equipos de ${base} y ${base + 1}.`;
+}
 
 /** Qué se puede hacer en clase, con una línea de qué es. Las actividades salen del registro. */
 const QUE_HACER: { valor: Actividad; nombre: string; descripcion: string; icono: typeof Puzzle }[] = [
@@ -229,7 +239,7 @@ export function PreparacionClase() {
                     >
                       <span className="font-bold">{c.nombre}</span>
                       <span className={cn('flex items-center gap-1.5 text-sm', n > 0 ? 'font-semibold text-bien-texto' : 'text-muted-foreground')}>
-                        <span className={cn('size-2 rounded-full', n > 0 ? 'bg-pd-resp-b' : 'bg-muted-foreground/40')} aria-hidden />
+                        <span className={cn('size-2 rounded-full', n > 0 ? 'bg-pd-resp-d' : 'bg-muted-foreground/40')} aria-hidden />
                         {n === 0 ? 'nadie conectado' : n === 1 ? '1 conectado' : `${n} conectados`}
                       </span>
                     </button>
@@ -258,7 +268,7 @@ export function PreparacionClase() {
                     <span
                       className={cn(
                         'grid size-11 shrink-0 place-items-center rounded-2xl transition-colors',
-                        elegida ? 'bg-pd-celeste-oscuro text-white' : 'bg-pd-celeste-claro text-pd-celeste-oscuro',
+                        elegida ? 'bg-pd-celeste-oscuro text-white' : 'bg-pd-celeste-claro text-acento',
                       )}
                     >
                       <Icono className="size-5" />
@@ -273,10 +283,7 @@ export function PreparacionClase() {
             </div>
           </Paso>
 
-          <Paso
-            numero={3}
-            titulo={actividad === 'quiz' ? '¿Qué quiz?' : actividad === 'presentacion' ? '¿Qué presentación?' : ACTIVIDADES[actividad].paso3}
-          >
+          <Paso numero={3} titulo={actividad === 'quiz' ? '¿Qué quiz?' : actividad === 'presentacion' ? '¿Qué presentación?' : ACTIVIDADES[actividad].paso3}>
             {actividad !== 'presentacion' && actividad !== 'quiz' ? (
               <PrepararActividad tipo={actividad} comisionId={comisionId} nombreComision={nombreComision} />
             ) : actividad === 'presentacion' ? (
@@ -307,7 +314,7 @@ export function PreparacionClase() {
                         onClick={() => elegirPresentacion(p.id)}
                         className={cn(claseOpcion(presentacionElegida === p.id), 'items-center gap-3')}
                       >
-                        <FileText className="size-6 flex-none text-pd-celeste-oscuro" />
+                        <FileText className="size-6 flex-none text-acento" />
                         <span className="flex min-w-0 flex-col gap-0.5">
                           <span className="font-bold">{p.titulo}</span>
                           <span className="text-sm text-muted-foreground">{p.paginas === 1 ? '1 diapositiva' : `${p.paginas} diapositivas`}</span>
@@ -386,7 +393,10 @@ export function PreparacionClase() {
                       <Switch id="por-equipos" checked={porEquipos} onCheckedChange={setPorEquipos} />
                       <FieldContent>
                         <FieldLabel htmlFor="por-equipos">Por equipos</FieldLabel>
-                        <FieldDescription>Se reparten solos y parejos. Gana el equipo con mejor promedio, así no importa cuántos sean.</FieldDescription>
+                        <FieldDescription>
+                          Se reparten solos y parejos; después, en la sala de espera, podés mover a quien quieras o cambiar la cantidad. Gana el equipo con
+                          mejor promedio.
+                        </FieldDescription>
                       </FieldContent>
                     </Field>
                     {porEquipos && (
@@ -409,6 +419,9 @@ export function PreparacionClase() {
                           {EQUIPOS.slice(0, cantidadEquipos)
                             .map((e) => `${e.mascota} ${e.nombre}`)
                             .join('  ')}
+                        </FieldDescription>
+                        <FieldDescription className="font-medium text-foreground">
+                          {repartoEquipos(comisionId ? (presencia[Number(comisionId)]?.length ?? 0) : 0, cantidadEquipos)}
                         </FieldDescription>
                       </Field>
                     )}

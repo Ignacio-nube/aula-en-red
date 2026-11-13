@@ -2,6 +2,7 @@
 // de cada compu (queda en su localStorage), como el modo liviano.
 import { useSyncExternalStore } from 'react';
 import { CLAVES, guardar, leer } from './almacen';
+import { esLiviano } from './liviano';
 
 export type PreferenciaTema = 'auto' | 'claro' | 'oscuro';
 
@@ -34,9 +35,31 @@ export function cambiarTema(t: PreferenciaTema): void {
   aplicar();
 }
 
-/** Cicla automático → claro → oscuro (para un solo botón). */
-export function siguienteTema(t: PreferenciaTema): PreferenciaTema {
-  return t === 'auto' ? 'claro' : t === 'claro' ? 'oscuro' : 'auto';
+type ConTransicion = { startViewTransition?: (cambio: () => void) => { ready: Promise<void>; finished: Promise<void> } };
+
+/**
+ * Cambia el tema abriendo el nuevo en círculo desde un punto (el interruptor). Si el navegador no lo
+ * soporta, en modo liviano o si la compu pide menos movimiento, cambia directo.
+ */
+export function cambiarTemaDesde(t: PreferenciaTema, x: number, y: number): void {
+  const doc = document as unknown as ConTransicion;
+  if (!doc.startViewTransition || esLiviano() || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    cambiarTema(t);
+    return;
+  }
+  const raiz = document.documentElement;
+  raiz.classList.add('cambiando-tema');
+  const transicion = doc.startViewTransition.call(document, () => cambiarTema(t));
+  const radio = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  transicion.ready
+    .then(() => {
+      raiz.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radio}px at ${x}px ${y}px)`] },
+        { duration: 480, easing: 'cubic-bezier(0.3, 0, 0.2, 1)', pseudoElement: '::view-transition-new(root)' },
+      );
+    })
+    .catch(() => {});
+  void transicion.finished.catch(() => {}).then(() => raiz.classList.remove('cambiando-tema'));
 }
 
 const suscribir = (f: () => void) => {

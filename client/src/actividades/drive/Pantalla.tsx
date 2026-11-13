@@ -29,7 +29,7 @@ export function PantallaMisiones({ estado, info }: { estado: EstadoDe<'drive'>; 
           <h1 className="text-[clamp(2rem,4vw,5rem)] leading-[1.05] font-extrabold">{v.titulo}</h1>
           {direccion && (
             <p className="text-[clamp(1rem,1.6vw,2rem)] font-semibold">
-              Entrá a <span className="font-extrabold text-pd-celeste-oscuro">{direccion}</span>
+              Entrá a <span className="font-extrabold text-acento">{direccion}</span>
             </p>
           )}
         </div>

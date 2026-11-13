@@ -54,7 +54,7 @@ function Sala({ estado, info }: { estado: EstadoDe<'tipeo'>; info: InfoServidor 
           <p className="text-[clamp(1.1rem,1.8vw,2.2rem)] font-semibold text-muted-foreground">Carrera de tipeo, comisión {estado.comisionNombre}</p>
           <h1 className="text-[clamp(2.2rem,4.6vw,5.5rem)] leading-[1.05] font-extrabold">{v.titulo}</h1>
           <p className="text-[clamp(1.2rem,2.2vw,2.8rem)] font-semibold">
-            Entrá a <span className="font-extrabold text-pd-celeste-oscuro tabular-nums">{direccion}</span>
+            Entrá a <span className="font-extrabold text-acento tabular-nums">{direccion}</span>
             {v.facil && <span className="ml-[1vw] rounded-full bg-pd-celeste-claro px-[1vw] py-[0.3vh] text-[0.7em]">Modo fácil</span>}
           </p>
         </div>
@@ -319,7 +319,7 @@ function Puesto({ corredor: c, posicion, demora }: { corredor: CorredorTipeo; po
         >
           {c.nombre}
         </span>
-        <span className="text-[clamp(1.1rem,1.9vw,2.4rem)] font-bold text-pd-celeste-oscuro">
+        <span className="text-[clamp(1.1rem,1.9vw,2.4rem)] font-bold text-acento">
           {c.ppm} ppm · {c.precision}%
         </span>
       </motion.div>

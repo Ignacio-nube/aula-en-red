@@ -201,6 +201,10 @@ export function controlar(accion: AccionJuego): Ack {
       return partida.terminar();
     case 'mezclarEquipos':
       return partida.mezclarEquipos();
+    case 'emparejarEquipos':
+      return partida.emparejarEquipos();
+    case 'cantidadEquipos':
+      return partida.cambiarCantidadEquipos(Number(accion.cantidad));
     case 'moverEquipo':
       return partida.moverEquipo(Number(accion.alumnoId), Number(accion.equipo));
   }

@@ -1,7 +1,7 @@
 import { Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/** Anillo que se vacía con el tiempo. En los últimos 5 segundos se pone coral. */
+/** Anillo que se vacía con el tiempo. En los últimos 5 segundos se pone coral y late. */
 export function Temporizador({
   restanteMs,
   totalMs,
@@ -23,7 +23,7 @@ export function Temporizador({
 
   return (
     <div
-      className={cn('relative grid shrink-0 place-items-center', className)}
+      className={cn('relative grid shrink-0 place-items-center', urgente && !pausado && 'latido', className)}
       style={{ width: tamano, height: tamano }}
       role="timer"
       aria-label={pausado ? `Pausado, quedan ${segundos} segundos` : `Quedan ${segundos} segundos`}

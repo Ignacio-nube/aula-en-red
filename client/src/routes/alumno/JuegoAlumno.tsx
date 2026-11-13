@@ -13,6 +13,7 @@ import { emitirConAck, formatoPuntos, ordinal, useRestante } from '@/lib/juego';
 import { esLiviano } from '@/lib/liviano';
 import { escalon, MOVIMIENTO, vibrar } from '@/lib/movimiento';
 import type { SocketAula } from '@/lib/socket';
+import { cn } from '@/lib/utils';
 
 // La salida es corta a propósito: con mode="wait" la pantalla nueva espera a que termine, y la
 // pregunta tiene que aparecer al instante.
@@ -96,6 +97,7 @@ function Cuenta({ estado, recibido }: { estado: EstadoJuego; recibido: number })
     const id = setInterval(tick, 100);
     return () => clearInterval(id);
   }, [recibido]);
+  useEffect(() => vibrar(n === 1 ? 40 : 15), [n]);
   return (
     <Centro>
       <p className="text-xl font-semibold text-muted-foreground sm:text-2xl">
@@ -104,11 +106,11 @@ function Cuenta({ estado, recibido }: { estado: EstadoJuego; recibido: number })
       <AnimatePresence mode="popLayout">
         <motion.span
           key={n}
-          className="text-[8rem] leading-none font-extrabold text-pd-celeste-oscuro sm:text-[10rem] bajo:text-[5rem]"
-          initial={{ scale: 0.4, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 1.6, opacity: 0, transition: MOVIMIENTO.salida }}
-          transition={MOVIMIENTO.rebote}
+          className="text-[8rem] leading-none font-extrabold text-acento sm:text-[10rem] bajo:text-[5rem]"
+          initial={{ scale: 2.8, opacity: 0, y: -50 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.5, opacity: 0, transition: MOVIMIENTO.salida }}
+          transition={MOVIMIENTO.impacto}
         >
           {n}
         </motion.span>
@@ -144,7 +146,7 @@ function Pregunta({ estado, recibido, socket }: { estado: EstadoJuego; recibido:
               🏁
             </span>
             <h1 className="text-4xl font-extrabold sm:text-5xl bajo:text-3xl">¡Llegaste!</h1>
-            <p className="text-2xl font-bold text-pd-celeste-oscuro">
+            <p className="text-2xl font-bold text-acento">
               {tipeo?.ppm || ppm} palabras por minuto, {tipeo?.precision ?? precision}% de precisión
             </p>
             <p className="text-lg text-muted-foreground">
@@ -240,11 +242,14 @@ function ResultadoTipeo({ estado, bien }: { estado: EstadoJuego; bien: boolean }
   return (
     <div className="flex min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 sm:pb-10">
       <motion.div
-        className="m-auto flex w-full max-w-2xl flex-col items-center gap-3 rounded-[2.5rem] px-6 py-10 text-center text-white shadow-[var(--pd-sombra-flotante)] sm:px-8 sm:py-12 bajo:gap-1 bajo:py-5"
+        className={cn(
+          'relative m-auto flex w-full max-w-2xl flex-col items-center gap-3 rounded-[2.5rem] px-6 py-10 text-center text-white shadow-[var(--pd-sombra-flotante)] sm:px-8 sm:py-12 bajo:gap-1 bajo:py-5',
+          bien && 'brillo',
+        )}
         style={{ backgroundColor: fondo, textShadow: '0 1px 3px rgb(0 0 0 / 0.25)' }}
         initial={{ scale: 0.6, rotate: bien ? -4 : 4 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 320, damping: bien ? 14 : 22 }}
+        animate={{ scale: 1, rotate: 0, x: bien ? 0 : [0, -12, 10, -6, 0] }}
+        transition={{ type: 'spring', stiffness: 320, damping: bien ? 14 : 22, x: { duration: 0.4, delay: 0.18 } }}
       >
         <span className="text-6xl sm:text-7xl bajo:text-4xl" aria-hidden>
           {bien ? '🏁' : avanzo ? '⌨️' : '⏰'}
@@ -265,7 +270,10 @@ function ResultadoTipeo({ estado, bien }: { estado: EstadoJuego; bien: boolean }
         {!bien && avanzo && <p className="text-lg font-medium">Sumaste por lo que llegaste a tipear.</p>}
         {bien && yo.racha >= 2 && (
           <p className="mt-2 rounded-full bg-white/20 px-5 py-2 text-lg font-bold sm:text-xl">
-            🔥 Racha de {yo.racha}
+            <span className="latido inline-block" aria-hidden>
+              🔥
+            </span>{' '}
+            Racha de {yo.racha}
             {yo.bonus ? ` (+${formatoPuntos(yo.bonus)} de bonus)` : ''}
           </p>
         )}
@@ -300,11 +308,14 @@ function TarjetaResultado({ estado, bien, nombreCorrecta }: { estado: EstadoJueg
   return (
     <div className="flex min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 sm:pb-10">
       <motion.div
-        className="m-auto flex w-full max-w-2xl flex-col items-center gap-3 rounded-[2.5rem] px-6 py-10 text-center text-white shadow-[var(--pd-sombra-flotante)] sm:px-8 sm:py-12 bajo:gap-1 bajo:py-5"
+        className={cn(
+          'relative m-auto flex w-full max-w-2xl flex-col items-center gap-3 rounded-[2.5rem] px-6 py-10 text-center text-white shadow-[var(--pd-sombra-flotante)] sm:px-8 sm:py-12 bajo:gap-1 bajo:py-5',
+          bien && 'brillo',
+        )}
         style={{ backgroundColor: fondo, textShadow: '0 1px 3px rgb(0 0 0 / 0.25)' }}
         initial={{ scale: 0.6, rotate: bien ? -4 : 4 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 320, damping: bien ? 14 : 22 }}
+        animate={{ scale: 1, rotate: 0, x: bien ? 0 : [0, -12, 10, -6, 0] }}
+        transition={{ type: 'spring', stiffness: 320, damping: bien ? 14 : 22, x: { duration: 0.4, delay: 0.18 } }}
       >
         <motion.span
           className="text-6xl sm:text-7xl bajo:text-4xl"
@@ -327,7 +338,10 @@ function TarjetaResultado({ estado, bien, nombreCorrecta }: { estado: EstadoJueg
         )}
         {bien && yo.racha >= 2 && (
           <p className="mt-2 rounded-full bg-white/20 px-5 py-2 text-lg font-bold sm:text-xl">
-            🔥 Racha de {yo.racha}
+            <span className="latido inline-block" aria-hidden>
+              🔥
+            </span>{' '}
+            Racha de {yo.racha}
             {yo.bonus ? ` (+${formatoPuntos(yo.bonus)} de bonus)` : ''}
           </p>
         )}
@@ -367,18 +381,60 @@ function ListaPasos({ ids, pregunta, claro }: { ids: number[]; pregunta: NonNull
   );
 }
 
+/** El puesto del ranking anterior de este quiz, para avisarle cuando sube. Se calcula una vez por pregunta. */
+const memoriaPuesto = { sesion: -1, indice: -1, puesto: 0, subio: 0 };
+function puestosSubidos(estado: EstadoJuego): number {
+  const m = memoriaPuesto;
+  if (m.sesion === estado.sesionId && m.indice === estado.indice) return m.subio;
+  const ahora = estado.yo?.puesto ?? 0;
+  const antes = m.sesion === estado.sesionId ? m.puesto : 0;
+  m.subio = antes && ahora ? Math.max(0, antes - ahora) : 0;
+  m.sesion = estado.sesionId;
+  m.indice = estado.indice;
+  if (ahora) m.puesto = ahora;
+  return m.subio;
+}
+
 function Posicion({ estado }: { estado: EstadoJuego }) {
   const yo = estado.yo;
+  const subio = puestosSubidos(estado);
+  useEffect(() => {
+    if (subio > 0) vibrar([20, 40, 60]);
+  }, [subio]);
   if (!yo) return null;
   const ultima = estado.indice + 1 >= estado.total;
   return (
     <Centro>
       <p className="text-xl font-semibold text-muted-foreground sm:text-2xl">{ultima ? 'Antes del podio…' : `Después de la pregunta ${estado.indice + 1}`}</p>
-      <h1 className="text-5xl font-extrabold sm:text-6xl bajo:text-4xl">{yo.puesto ? `Vas ${ordinal(yo.puesto)}` : 'Seguí jugando'}</h1>
-      <p className="text-2xl font-bold text-pd-celeste-oscuro sm:text-3xl">
+      <motion.h1
+        className="text-5xl font-extrabold sm:text-6xl bajo:text-4xl"
+        initial={{ scale: 1.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ ...MOVIMIENTO.impacto, delay: 0.1 }}
+      >
+        {yo.puesto ? `Vas ${ordinal(yo.puesto)}` : 'Seguí jugando'}
+      </motion.h1>
+      {subio > 0 && (
+        <motion.p
+          className="rounded-full bg-[color-mix(in_oklch,var(--pd-bien-texto)_16%,transparent)] px-4 py-1 text-xl font-bold text-bien-texto"
+          initial={{ opacity: 0, y: 18, scale: 0.7 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ ...MOVIMIENTO.rebote, delay: 0.4 }}
+        >
+          ▲ Subiste {subio === 1 ? '1 puesto' : `${subio} puestos`}
+        </motion.p>
+      )}
+      <p className="text-2xl font-bold text-acento sm:text-3xl">
         <Numero valor={yo.puntos} desde={Math.max(0, yo.puntos - (yo.puntosPregunta ?? 0))} /> puntos
       </p>
-      {yo.racha >= 2 && <p className="text-xl font-semibold">🔥 {yo.racha} correctas seguidas</p>}
+      {yo.racha >= 2 && (
+        <p className="text-xl font-semibold">
+          <span className="latido inline-block" aria-hidden>
+            🔥
+          </span>{' '}
+          {yo.racha} correctas seguidas
+        </p>
+      )}
       {yo.equipo !== undefined && yo.puestoEquipo !== undefined && (
         <p className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xl font-semibold sm:text-2xl">
           <ChipEquipo indice={yo.equipo} /> {yo.puestoEquipo === 1 ? 'van primeros' : `van ${ordinal(yo.puestoEquipo)}`}
@@ -393,14 +449,33 @@ function Final({ estado, alumno }: { estado: EstadoJuego; alumno: AlumnoPublico 
   const puesto = yo?.puesto ?? null;
   const ganador = estado.equipos?.[0];
   const medalla = puesto === 1 ? '🏆' : puesto === 2 ? '🥈' : puesto === 3 ? '🥉' : '👏';
+  useEffect(() => {
+    if (!puesto || puesto > 3) return;
+    vibrar([40, 60, 40, 60, 120]);
+    if (esLiviano()) return;
+    const t = setTimeout(
+      () =>
+        void confetti({
+          particleCount: puesto === 1 ? 170 : 90,
+          spread: 100,
+          startVelocity: 46,
+          origin: { y: 0.6 },
+          colors: ['#3AB6E6', '#0B7DB0', '#F5B700', '#2BB673', '#FFFFFF'],
+          disableForReducedMotion: true,
+          ticks: 220,
+        }),
+      550,
+    );
+    return () => clearTimeout(t);
+  }, [puesto]);
   return (
     <Centro>
       <motion.span
         className="text-7xl sm:text-8xl bajo:text-5xl"
         aria-hidden
-        initial={{ scale: 0, rotate: -20 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ ...MOVIMIENTO.rebote, delay: 0.15 }}
+        initial={{ opacity: 0, y: -220, scale: 1.5, rotate: -25 }}
+        animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+        transition={{ ...MOVIMIENTO.impacto, delay: 0.15 }}
       >
         {medalla}
       </motion.span>

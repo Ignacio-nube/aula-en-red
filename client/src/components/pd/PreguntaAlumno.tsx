@@ -131,7 +131,7 @@ export function PreguntaTipeo({ pregunta, indice, total, restanteMs, totalMs, pa
                 🏁
               </span>
               <h1 className="text-4xl font-extrabold">¡Llegaste!</h1>
-              <p className="text-2xl font-bold text-pd-celeste-oscuro">
+              <p className="text-2xl font-bold text-acento">
                 {ppm} palabras por minuto, {precision}% de precisión
               </p>
             </div>

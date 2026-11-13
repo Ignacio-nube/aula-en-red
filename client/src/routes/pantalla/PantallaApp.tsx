@@ -16,6 +16,7 @@ import { nombresCortos } from '@/lib/nombres';
 import { useJuego } from '@/lib/juego';
 import { activarSonido, sonidoActivado } from '@/lib/sonidos';
 import { useCortado, usePresencia, useSocket } from '@/lib/socket';
+import { Escenario } from './Escenario';
 import { JuegoPantalla } from './JuegoPantalla';
 import { EncuestaPantalla, PreguntaDestacada } from './EncuestaPantalla';
 import { PresentacionPantalla } from './PresentacionPantalla';
@@ -55,7 +56,10 @@ export function PantallaApp() {
   return (
     <main className="relative flex h-dvh flex-col overflow-hidden px-[4vw] pt-[3vh] pb-[4vh]">
       {estado ? (
-        <JuegoPantalla estado={estado} recibido={recibido} info={info} />
+        // El quiz se juega sobre el escenario oscuro, aunque la compu esté en tema claro.
+        <Escenario fase={estado.fase}>
+          <JuegoPantalla estado={estado} recibido={recibido} info={info} />
+        </Escenario>
       ) : Actividad && actividad.estado ? (
         <Actividad estado={actividad.estado} recibido={actividad.recibido} info={info} />
       ) : encuesta ? (
@@ -70,7 +74,7 @@ export function PantallaApp() {
               <h1 className="text-[clamp(2rem,4.2vw,5rem)] leading-[1.05] font-extrabold">{info?.nombreCurso ?? ' '}</h1>
               <div className="flex flex-col gap-1">
                 <p className="text-[clamp(1.1rem,1.8vw,2.2rem)] font-medium text-muted-foreground">Entrá desde el navegador a</p>
-                <p className="text-[clamp(2.6rem,6.4vw,8rem)] leading-none font-extrabold tracking-tight text-pd-celeste-oscuro tabular-nums">{direccion}</p>
+                <p className="text-[clamp(2.6rem,6.4vw,8rem)] leading-none font-extrabold tracking-tight text-acento tabular-nums">{direccion}</p>
               </div>
             </div>
             {info && (
@@ -136,9 +140,9 @@ export function PantallaApp() {
       </AnimatePresence>
 
       <div
-        className={`absolute right-3 bottom-3 flex gap-1 transition-opacity focus-within:opacity-100 hover:opacity-100 ${presentacion && !estado && !encuesta ? 'opacity-0' : 'opacity-30'}`}
+        className={`absolute right-3 bottom-3 flex items-center gap-1 transition-opacity focus-within:opacity-100 hover:opacity-100 ${estado ? 'dark text-foreground' : ''} ${presentacion && !estado && !encuesta ? 'opacity-0' : 'opacity-30'}`}
       >
-        <BotonTema />
+        <BotonTema className="mx-1" />
         <BotonLiviano />
         {/* El navegador solo deja reproducir sonido después de un clic en la página. */}
         <Button

@@ -8,6 +8,7 @@ export const CLAVES = {
   sonido: 'aula:sonido-pantalla',
   sonidoManos: 'aula:sonido-manos',
   tema: 'aula:tema',
+  fondo: 'aula:fondo',
 } as const;
 
 export function leer(clave: string): string | null {

@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { BarChart3, LogOut, Menu, MonitorPlay, MonitorUp, Moon, Presentation, Puzzle, Settings, Sun, SunMoon, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { BarraVidrio } from '@/components/pd/BarraVidrio';
+import { BotonTema } from '@/components/pd/BotonTema';
 import { Fallo } from '@/components/pd/Fallo';
 import { Logo } from '@/components/pd/Logo';
 import { PinLoader } from '@/components/pd/Pin';
@@ -25,6 +26,7 @@ import { useAtencion, useDestacada, useEncuesta, useManos, usePreguntasAnonimas,
 import { emitirConAck, useJuego } from '@/lib/juego';
 import { useActividad } from '@/lib/actividad';
 import { cambiarLiviano, useLiviano } from '@/lib/liviano';
+import { MOVIMIENTO } from '@/lib/movimiento';
 import { prepararAudioConPrimerClic } from '@/lib/sonidos';
 import { cambiarTema, NOMBRE_TEMA, useTema } from '@/lib/tema';
 import { usePresencia, useSocket } from '@/lib/socket';
@@ -179,26 +181,31 @@ function Panel({ token, onSalir }: { token: string; onSalir: () => void }) {
               <span className="text-lg font-bold whitespace-nowrap max-[360px]:hidden lg:max-2xl:hidden">Panel del profe</span>
             </div>
             {/* En el celu y la tablet, las pestañas van en la barra de abajo (BarraInferior). */}
-            <TabsList className="hidden bg-muted/80 lg:flex lg:w-fit">
-              <TabsTrigger value="clase">
+            <TabsList className="isolate hidden bg-muted/80 lg:flex lg:w-fit">
+              <TabsTrigger value="clase" className={PESTANA}>
+                <Indicador activa={pestana === 'clase'} />
                 <MonitorPlay data-icon="inline-start" />
                 Clase en vivo
-                {hayClase && <span className="size-2 rounded-full bg-pd-resp-b" aria-label="(en curso)" />}
+                {hayClase && <span className="latido size-2 rounded-full bg-pd-resp-b" aria-label="(en curso)" />}
               </TabsTrigger>
-              <TabsTrigger value="quizzes">
+              <TabsTrigger value="quizzes" className={PESTANA}>
+                <Indicador activa={pestana === 'quizzes'} />
                 <Puzzle data-icon="inline-start" />
                 Quizzes
               </TabsTrigger>
-              <TabsTrigger value="presentaciones">
+              <TabsTrigger value="presentaciones" className={PESTANA}>
+                <Indicador activa={pestana === 'presentaciones'} />
                 <Presentation data-icon="inline-start" />
                 Presentaciones
               </TabsTrigger>
-              <TabsTrigger value="comisiones">
+              <TabsTrigger value="comisiones" className={PESTANA}>
+                <Indicador activa={pestana === 'comisiones'} />
                 <Users data-icon="inline-start" />
                 <span className="max-xl:hidden">Comisiones y alumnos</span>
                 <span className="xl:hidden">Alumnos</span>
               </TabsTrigger>
-              <TabsTrigger value="resultados">
+              <TabsTrigger value="resultados" className={PESTANA}>
+                <Indicador activa={pestana === 'resultados'} />
                 <BarChart3 data-icon="inline-start" />
                 Resultados
               </TabsTrigger>
@@ -210,10 +217,15 @@ function Panel({ token, onSalir }: { token: string; onSalir: () => void }) {
                 <span className="lg:max-xl:sr-only">Pantalla grande</span>
               </Button>
               <Badge variant={totalConectados > 0 ? 'default' : 'secondary'}>
-                {totalConectados}
+                {/* El número salta cuando entra o sale alguien. */}
+                <motion.span key={totalConectados} className="inline-block" initial={{ scale: 1.6 }} animate={{ scale: 1 }} transition={MOVIMIENTO.rebote}>
+                  {totalConectados}
+                </motion.span>
                 <span className="max-sm:sr-only lg:max-xl:sr-only">{totalConectados === 1 ? ' conectado' : ' conectados'}</span>
                 <Users className="sm:hidden" aria-hidden />
               </Badge>
+              {/* Entre 1024 y 1280 px no entra: ahí el tema se cambia desde el menú. */}
+              <BotonTema className="max-sm:hidden lg:max-xl:hidden" />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label="Más opciones">
@@ -341,6 +353,20 @@ function Panel({ token, onSalir }: { token: string; onSalir: () => void }) {
   );
 }
 
+/** Las pestañas de arriba no pintan su propio fondo: lo hace el indicador, que se desliza de una a otra. */
+const PESTANA = 'border-transparent! bg-transparent! shadow-none!';
+
+function Indicador({ activa }: { activa: boolean }) {
+  if (!activa) return null;
+  return (
+    <motion.span
+      layoutId="pestana-superior"
+      className="absolute inset-0 -z-10 rounded-full bg-card shadow-sm ring-1 ring-foreground/5"
+      transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+    />
+  );
+}
+
 function ItemConDetalle({ titulo, detalle }: { titulo: string; detalle: string }) {
   return (
     <span className="flex min-w-0 flex-col">
@@ -373,7 +399,7 @@ function BarraInferior({ pestana, onCambiar, hayClase }: { pestana: string; onCa
                 onClick={() => onCambiar(valor)}
                 className={cn(
                   'relative flex w-full flex-col items-center gap-0.5 pt-2 pb-1.5 text-[0.7rem] font-semibold outline-none focus-visible:bg-muted',
-                  activa ? 'text-pd-celeste-oscuro' : 'text-muted-foreground',
+                  activa ? 'text-acento' : 'text-muted-foreground',
                 )}
               >
                 {activa && (
@@ -386,7 +412,7 @@ function BarraInferior({ pestana, onCambiar, hayClase }: { pestana: string; onCa
                 <span className="relative">
                   <Icono className="size-6" strokeWidth={activa ? 2.3 : 1.8} />
                   {valor === 'clase' && hayClase && (
-                    <span className="absolute -top-0.5 -right-1 size-2.5 rounded-full bg-pd-resp-b ring-2 ring-background" aria-label="(en curso)" />
+                    <span className="latido absolute -top-0.5 -right-1 size-2.5 rounded-full bg-pd-resp-b ring-2 ring-background" aria-label="(en curso)" />
                   )}
                 </span>
                 {texto}

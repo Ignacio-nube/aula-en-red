@@ -1,17 +1,17 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 /* Inter local (sin Google Fonts): solo latín y latín extendido (ñ, tildes). */
-@import "@fontsource/inter/latin-400.css";
-@import "@fontsource/inter/latin-ext-400.css";
-@import "@fontsource/inter/latin-500.css";
-@import "@fontsource/inter/latin-ext-500.css";
-@import "@fontsource/inter/latin-600.css";
-@import "@fontsource/inter/latin-ext-600.css";
-@import "@fontsource/inter/latin-700.css";
-@import "@fontsource/inter/latin-ext-700.css";
-@import "@fontsource/inter/latin-800.css";
-@import "@fontsource/inter/latin-ext-800.css";
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-ext-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-ext-500.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/inter/latin-ext-600.css';
+@import '@fontsource/inter/latin-700.css';
+@import '@fontsource/inter/latin-ext-700.css';
+@import '@fontsource/inter/latin-800.css';
+@import '@fontsource/inter/latin-ext-800.css';
 
 @custom-variant dark (&:is(.dark *));
 /* Pantallas bajitas: celular acostado o notebook con poca altura útil. */
@@ -46,6 +46,8 @@
   --pd-bien-fondo: #1a7f4f;
   --pd-mal-fondo: #c93c39;
   --pd-neutro-fondo: #616161;
+  /* Celeste como TEXTO de acento: en oscuro el celeste oscuro casi no se lee, así que cambia. */
+  --pd-acento-texto: var(--pd-celeste-oscuro);
 
   /* Niveles del medidor de contraseñas */
   --pd-nivel-debil: #e5484d;
@@ -106,6 +108,7 @@
   --pd-bien-texto: #4fd394;
   --pd-medio-texto: #f5c542;
   --pd-mal-texto: #ff8a85;
+  --pd-acento-texto: #62caf2;
   --pd-fondo: #0d141c;
   --pd-vidrio: rgb(23 33 44 / 0.74);
   --pd-velo: rgb(0 0 0 / 0.45);
@@ -140,6 +143,28 @@
 }
 .dark ::selection {
   background: rgb(58 182 230 / 0.4);
+}
+
+/* Escenario de juego de la pantalla grande: siempre oscuro (va junto con la clase .dark en el mismo
+   elemento), más profundo que el modo oscuro común para que los colores de las respuestas resalten. */
+.dark.escenario {
+  --pd-fondo: #060b18;
+  --background: #060b18;
+  --card: #141e35;
+  --card-foreground: #eef3fa;
+  --foreground: #eef3fa;
+  --muted: #1c2843;
+  --muted-foreground: #aab6c9;
+  --border: #2c3b5a;
+  --pd-celeste-claro: #11284a;
+  --pd-vidrio: rgb(10 16 32 / 0.78);
+  --pd-sombra-tarjeta: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 28px -8px rgb(0 0 0 / 0.6);
+  --pd-sombra-flotante: 0 2px 6px rgb(0 0 0 / 0.45), 0 28px 56px -14px rgb(0 0 0 / 0.75);
+  background-color: #060b18;
+  color: var(--foreground);
+}
+.liviano .dark.escenario {
+  --pd-vidrio: rgb(10 16 32 / 0.97);
 }
 
 /* Modo liviano (para PCs lentas): sin vidrio esmerilado. Las animaciones las
@@ -179,15 +204,102 @@
   }
 }
 
+/* Algo que late para llamar la atención (rachas, el botón de avanzar, los últimos segundos). */
+@keyframes latido {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+/* Un brillo que cruza una superficie (columnas del podio, tarjeta de acierto). */
+@keyframes brillo-barrido {
+  from {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(340%) skewX(-18deg);
+  }
+}
+/* Las manchas de luz del escenario, que se mueven despacio. */
+@keyframes deriva-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(9vw, 7vh, 0) scale(1.18);
+  }
+}
+@keyframes deriva-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.1);
+  }
+  50% {
+    transform: translate3d(-8vw, -6vh, 0) scale(0.92);
+  }
+}
+@keyframes reflector {
+  0%,
+  100% {
+    transform: rotate(-16deg);
+  }
+  50% {
+    transform: rotate(12deg);
+  }
+}
+/* Halo que se enciende y se apaga alrededor de lo que ganó. */
+@keyframes halo {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Todo lo anterior se apaga en modo liviano y si la compu pide menos movimiento. */
+.liviano .latido,
+.liviano .brillo::after,
+.liviano .mancha,
+.liviano .reflector,
+.liviano .halo {
+  animation: none !important;
+}
+.liviano .brillo::after {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-in,
   .animate-out {
     animation-duration: 1ms !important;
   }
+  .latido,
+  .brillo::after,
+  .mancha,
+  .reflector,
+  .halo {
+    animation: none !important;
+  }
+  .brillo::after {
+    display: none;
+  }
+}
+
+/* Cambio de tema: el tema nuevo se abre en círculo desde el interruptor (lo anima lib/tema.ts). */
+.cambiando-tema::view-transition-old(root),
+.cambiando-tema::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
 
 @theme inline {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);
 
   --color-pd-celeste: var(--pd-celeste);
@@ -200,7 +312,13 @@
   --color-resp-b: var(--pd-resp-b);
   --color-resp-c: var(--pd-resp-c);
   --color-resp-d: var(--pd-resp-d);
+  /* Los mismos con el prefijo pd-, que es como se usan en el código (bg-pd-resp-b, ring-pd-resp-c…). */
+  --color-pd-resp-a: var(--pd-resp-a);
+  --color-pd-resp-b: var(--pd-resp-b);
+  --color-pd-resp-c: var(--pd-resp-c);
+  --color-pd-resp-d: var(--pd-resp-d);
   --color-bien-texto: var(--pd-bien-texto);
+  --color-acento: var(--pd-acento-texto);
   --color-nivel-debil: var(--pd-nivel-debil);
   --color-nivel-media: var(--pd-nivel-media);
   --color-nivel-fuerte: var(--pd-nivel-fuerte);
@@ -250,6 +368,26 @@
 @utility vidrio {
   background-color: var(--pd-vidrio);
   backdrop-filter: saturate(1.6) blur(var(--pd-blur));
+}
+
+@utility latido {
+  animation: latido 1.1s ease-in-out infinite;
+}
+@utility halo {
+  animation: halo 1.8s ease-in-out infinite;
+}
+/* Brillo que cruza el elemento cada tanto. El elemento tiene que estar posicionado (relative o absolute). */
+@utility brillo {
+  overflow: hidden;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 35%;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.38), transparent);
+    animation: brillo-barrido 2.8s ease-in-out infinite;
+    pointer-events: none;
+  }
 }
 
 /* Fondo general: degradé suave de celeste claro a blanco */
@@ -303,6 +441,31 @@
   .dark & {
     --brillo-estanque: rgb(58 182 230 / 0.08);
     background-color: rgb(11 26 38);
+  }
+}
+
+/* Los otros fondos de la sala de espera (los elige cada alumno). Lo que se mueve lo dibuja un canvas
+   encima (components/fondos); en modo liviano queda solo esto. */
+/* El espacio no sigue a la clase .dark sino al tema de la compu (lo elige FondoEspera): lo que va encima
+   siempre lleva letras claras, sea el atardecer o la noche. */
+@utility bg-espacio {
+  background-color: #2a1f5c;
+  background-image:
+    radial-gradient(60rem 34rem at 50% 108%, rgb(255 170 110 / 0.75), transparent 70%),
+    radial-gradient(70rem 50rem at 15% -10%, rgb(110 90 220 / 0.55), transparent 70%), linear-gradient(#2a1f5c, #5a3a8c 60%, #b0608f);
+}
+@utility bg-espacio-noche {
+  background-color: #050816;
+  background-image:
+    radial-gradient(60rem 40rem at 80% 110%, rgb(58 182 230 / 0.16), transparent 70%),
+    radial-gradient(60rem 44rem at 10% -10%, rgb(120 80 220 / 0.22), transparent 70%), linear-gradient(#050816, #0b1230);
+}
+@utility bg-aurora {
+  background-color: #dff1f5;
+  background-image: linear-gradient(#cfe9f6, #e9f6f1 70%, #f4f8ee);
+  .dark & {
+    background-color: #061018;
+    background-image: linear-gradient(#050b16, #08202a 75%, #0b2a2a);
   }
 }
 

@@ -125,8 +125,13 @@ export type AccionJuego =
   | { tipo: 'terminar' }
   | { tipo: 'cerrar' }
   | { tipo: 'modoRanking'; modo: ModoRanking }
-  /** En la sala de espera: rearmar los equipos al azar, o pasar a alguien a otro equipo. */
+  /**
+   * En la sala de espera: rearmar los equipos al azar, emparejarlos moviendo a los menos posibles,
+   * cambiar cuántos equipos hay, o pasar a alguien a otro equipo.
+   */
   | { tipo: 'mezclarEquipos' }
+  | { tipo: 'emparejarEquipos' }
+  | { tipo: 'cantidadEquipos'; cantidad: number }
   | { tipo: 'moverEquipo'; alumnoId: number; equipo: number };
 
 export type Ack = { ok: true } | { ok: false; error: string };

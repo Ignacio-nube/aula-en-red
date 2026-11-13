@@ -82,7 +82,7 @@ function Cuenta({ restanteMs, recibido }: { restanteMs: number; recibido: number
       <AnimatePresence mode="popLayout">
         <motion.span
           key={n}
-          className="text-[8rem] leading-none font-extrabold text-pd-celeste-oscuro sm:text-[10rem] bajo:text-[5rem]"
+          className="text-[8rem] leading-none font-extrabold text-acento sm:text-[10rem] bajo:text-[5rem]"
           initial={{ scale: 0.4, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 1.6, opacity: 0, transition: MOVIMIENTO.salida }}
@@ -113,7 +113,7 @@ function Carrera({ estado, recibido, socket }: { estado: EstadoDe<'tipeo'>; reci
             🏁
           </motion.span>
           <h1 className="text-4xl font-extrabold sm:text-5xl">¡Llegaste!</h1>
-          <p className="text-2xl font-bold text-pd-celeste-oscuro">
+          <p className="text-2xl font-bold text-acento">
             {yo?.ppm || ppm} palabras por minuto, {yo?.precision ?? precision}% de precisión
           </p>
           {yo?.puesto && <p className="text-xl font-semibold">Vas {ordinal(yo.puesto)}</p>}
@@ -161,7 +161,7 @@ function Fin({ estado, alumno }: { estado: EstadoDe<'tipeo'>; alumno: AlumnoPubl
       </div>
       {record && (
         <motion.p
-          className="flex items-center gap-2 rounded-full bg-pd-celeste-claro px-5 py-2 text-lg font-bold text-pd-celeste-oscuro"
+          className="flex items-center gap-2 rounded-full bg-pd-celeste-claro px-5 py-2 text-lg font-bold text-acento"
           initial={{ opacity: 0, scale: 0.6 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ ...MOVIMIENTO.rebote, delay: 0.4 }}

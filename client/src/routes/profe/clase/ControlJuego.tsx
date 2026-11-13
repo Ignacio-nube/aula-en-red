@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, ChevronRight, FastForward, Keyboard, MonitorPlay, Pause, Play, Plus, Shuffle, Square } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Check, ChevronRight, FastForward, Keyboard, MonitorPlay, Pause, Play, Plus, Square } from 'lucide-react';
 import { toast } from 'sonner';
 import { equipo, NOMBRE_TIPO, type AccionJuego, type EstadoJuego, type FaseJuego, type ModoRanking } from '@aula/shared';
 import { ListaCorredores } from '@/actividades/tipeo/Control';
-import { ChipEquipo } from '@/components/pd/Equipo';
 import { PinAvatar } from '@/components/pd/Pin';
 import { estiloRespuesta, FormaRespuesta } from '@/components/pd/Respuesta';
 import { Temporizador } from '@/components/pd/Temporizador';
@@ -13,9 +13,11 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Kbd } from '@/components/ui/kbd';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatoPuntos, ordinal, urlImagen, useRestante } from '@/lib/juego';
+import { MOVIMIENTO } from '@/lib/movimiento';
 import { cn } from '@/lib/utils';
 import { Confirmar, type PedidoConfirmacion } from '../Confirmar';
 import { useProfe } from '../contexto';
+import { SalaEquipos } from './SalaEquipos';
 
 const NOMBRE_FASE: Record<FaseJuego, string> = {
   lobby: 'Sala de espera',
@@ -60,6 +62,67 @@ function textoSiguiente(e: EstadoJuego): string {
     case 'podio':
       return 'Volver al panel';
   }
+}
+
+/** Los pasos de un quiz, para ver de un vistazo en cuál está la clase. La cuenta regresiva es parte de la pregunta. */
+const PASOS: { fases: FaseJuego[]; nombre: string }[] = [
+  { fases: ['lobby'], nombre: 'Sala' },
+  { fases: ['cuenta', 'pregunta'], nombre: 'Pregunta' },
+  { fases: ['resultado'], nombre: 'Resultado' },
+  { fases: ['ranking'], nombre: 'Ranking' },
+  { fases: ['podio'], nombre: 'Podio' },
+];
+
+function LineaDePasos({ estado: e }: { estado: EstadoJuego }) {
+  const actual = PASOS.findIndex((p) => p.fases.includes(e.fase));
+  // Preguntas ya jugadas: la que está en curso cuenta recién cuando se cierra.
+  const jugadas = e.fase === 'podio' ? e.total : Math.max(0, e.indice + (e.fase === 'resultado' || e.fase === 'ranking' ? 1 : 0));
+  return (
+    <div className="flex flex-col gap-2.5">
+      <ol className="flex items-center" aria-label="En qué parte del quiz está la clase">
+        {PASOS.map((p, i) => (
+          <li key={p.nombre} className={cn('flex items-center', i > 0 && 'min-w-0 flex-1')} aria-current={i === actual ? 'step' : undefined}>
+            {i > 0 && (
+              <span
+                className={cn('mx-1 h-0.5 min-w-2 flex-1 rounded-full transition-colors duration-500 sm:mx-2', i <= actual ? 'bg-pd-celeste' : 'bg-muted')}
+                aria-hidden
+              />
+            )}
+            <span
+              className={cn(
+                'relative rounded-full px-2 py-1 text-xs font-bold transition-colors duration-300 sm:px-3 sm:text-sm',
+                i === actual ? 'text-white' : i < actual ? 'text-acento' : 'text-muted-foreground',
+              )}
+            >
+              {i === actual && (
+                <motion.span
+                  layoutId="paso-quiz"
+                  className="absolute inset-0 rounded-full bg-pd-celeste-oscuro shadow-[var(--pd-sombra-boton)]"
+                  transition={MOVIMIENTO.suave}
+                />
+              )}
+              <span className="relative">{p.nombre}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-label="Preguntas jugadas"
+        aria-valuemin={0}
+        aria-valuemax={e.total}
+        aria-valuenow={jugadas}
+      >
+        <motion.div
+          className="h-full origin-left rounded-full bg-pd-celeste"
+          initial={false}
+          animate={{ scaleX: e.total > 0 ? jugadas / e.total : 0 }}
+          transition={MOVIMIENTO.crecer}
+        />
+      </div>
+    </div>
+  );
 }
 
 export function ControlJuego({ estado: e, recibido }: { estado: EstadoJuego; recibido: number }) {
@@ -110,6 +173,8 @@ export function ControlJuego({ estado: e, recibido }: { estado: EstadoJuego; rec
   const p = e.pregunta;
   const enPregunta = e.fase === 'pregunta';
   const respondieron = new Set(e.quienesRespondieron ?? []);
+  // Ya respondieron todos: es el momento de avanzar, y el botón lo avisa.
+  const todos = enPregunta && e.conectados > 0 && e.respondieron >= e.conectados;
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -130,6 +195,7 @@ export function ControlJuego({ estado: e, recibido }: { estado: EstadoJuego; rec
           </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
+          <LineaDePasos estado={e} />
           {e.fase === 'lobby' && e.equipos ? (
             <SalaEquipos estado={e} accion={accion} ocupado={ocupado} />
           ) : e.fase === 'lobby' ? (
@@ -212,8 +278,8 @@ export function ControlJuego({ estado: e, recibido }: { estado: EstadoJuego; rec
                     return (
                       <li key={id} className="relative flex items-center gap-3 overflow-hidden rounded-2xl bg-muted/60 px-3 py-2.5">
                         <span
-                          className="absolute inset-y-0 left-0 bg-pd-celeste/20 transition-[width] duration-500"
-                          style={{ width: `${(cant / Math.max(1, e.respondieron)) * 100}%` }}
+                          className="absolute inset-0 origin-left bg-pd-celeste/20 transition-transform duration-500 ease-out"
+                          style={{ transform: `scaleX(${cant / Math.max(1, e.respondieron)})` }}
                           aria-hidden
                         />
                         <span className="relative grid size-6 shrink-0 place-items-center rounded-full bg-pd-celeste-oscuro text-xs font-bold text-white">
@@ -234,8 +300,8 @@ export function ControlJuego({ estado: e, recibido }: { estado: EstadoJuego; rec
                     return (
                       <li key={o.id} className="relative flex items-center gap-3 overflow-hidden rounded-2xl bg-muted/60 px-3 py-2.5">
                         <span
-                          className="absolute inset-y-0 left-0 transition-[width] duration-500"
-                          style={{ width: `${(cant / max) * 100}%`, backgroundColor: `color-mix(in oklch, ${est.fondo} 22%, transparent)` }}
+                          className="absolute inset-0 origin-left transition-transform duration-500 ease-out"
+                          style={{ transform: `scaleX(${cant / max})`, backgroundColor: `color-mix(in oklch, ${est.fondo} 22%, transparent)` }}
                           aria-hidden
                         />
                         <FormaRespuesta forma={est.forma} color={est.fondo} className="relative size-5 shrink-0" />
@@ -257,7 +323,7 @@ export function ControlJuego({ estado: e, recibido }: { estado: EstadoJuego; rec
 
           {/* Controles */}
           <div className="flex flex-wrap items-center gap-2 border-t pt-4">
-            <Button size="lg" onClick={() => void siguiente()} disabled={ocupado}>
+            <Button size="lg" className={cn('h-14 px-7 text-lg', todos && !ocupado && 'latido')} onClick={() => void siguiente()} disabled={ocupado}>
               {e.fase === 'lobby' ? <Play data-icon="inline-start" /> : <ChevronRight data-icon="inline-start" />}
               {textoSiguiente(e)}
             </Button>
@@ -321,12 +387,27 @@ export function ControlJuego({ estado: e, recibido }: { estado: EstadoJuego; rec
           </ToggleGroup>
         </CardHeader>
         <CardContent>
+          {/* Cuántos faltan responder, de un vistazo. */}
+          {enPregunta && (
+            <div className="mb-3 h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
+              <div
+                className={cn('h-full origin-left rounded-full transition-transform duration-500 ease-out', todos ? 'bg-pd-resp-d' : 'bg-pd-celeste')}
+                style={{ transform: `scaleX(${e.conectados > 0 ? Math.min(1, e.respondieron / e.conectados) : 0})` }}
+              />
+            </div>
+          )}
           {e.ranking.length === 0 ? (
             <p className="text-sm text-muted-foreground">Todavía no hay participantes.</p>
           ) : (
             <ol className="flex flex-col gap-1">
               {e.ranking.map((r) => (
-                <li key={r.alumnoId} className={cn('flex items-center gap-2 rounded-xl px-2 py-1.5', !r.conectado && 'opacity-50')}>
+                // Cuando cambian los puntos, las filas se acomodan moviéndose.
+                <motion.li
+                  key={r.alumnoId}
+                  layout="position"
+                  transition={MOVIMIENTO.suave}
+                  className={cn('flex items-center gap-2 rounded-xl px-2 py-1.5', !r.conectado && 'opacity-50')}
+                >
                   <span className="w-7 text-right text-sm font-bold text-muted-foreground tabular-nums">{ordinal(r.puesto)}</span>
                   <PinAvatar avatar={r.avatar} tamano={26} />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -342,7 +423,7 @@ export function ControlJuego({ estado: e, recibido }: { estado: EstadoJuego; rec
                   ) : (
                     <span className="text-sm font-semibold tabular-nums">{formatoPuntos(r.puntos)}</span>
                   )}
-                </li>
+                </motion.li>
               ))}
             </ol>
           )}
@@ -350,58 +431,6 @@ export function ControlJuego({ estado: e, recibido }: { estado: EstadoJuego; rec
       </Card>
 
       <Confirmar pedido={confirmacion} onCerrar={() => setConfirmacion(null)} />
-    </div>
-  );
-}
-
-/** Sala de espera por equipos: quién quedó en cada uno. Tocar a alguien lo pasa al equipo siguiente. */
-function SalaEquipos({ estado: e, accion, ocupado }: { estado: EstadoJuego; accion: (a: AccionJuego) => Promise<boolean>; ocupado: boolean }) {
-  const cantidad = e.equipos?.length ?? 0;
-  return (
-    <div className="flex flex-col gap-3 rounded-3xl bg-pd-celeste-claro/60 p-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <p className="min-w-0 flex-1 font-semibold">
-          {e.ranking.length === 0
-            ? 'Esperando que entren los alumnos…'
-            : 'Se reparten solos a medida que entran. Tocá a alguien para pasarlo al equipo siguiente.'}
-        </p>
-        <Button variant="outline" size="sm" disabled={ocupado || e.ranking.length < 2} onClick={() => void accion({ tipo: 'mezclarEquipos' })}>
-          <Shuffle data-icon="inline-start" />
-          Mezclar equipos
-        </Button>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {Array.from({ length: cantidad }, (_, i) => {
-          const miembros = e.ranking.filter((r) => r.equipo === i);
-          return (
-            <div key={i} className="flex flex-col gap-2 rounded-2xl bg-card p-3" style={{ boxShadow: `inset 0 4px 0 ${equipo(i).color}` }}>
-              <div className="flex items-center justify-between gap-2">
-                <ChipEquipo indice={i} className="text-sm" />
-                <span className="text-sm text-muted-foreground tabular-nums">{miembros.length}</span>
-              </div>
-              <ul className="flex flex-wrap gap-1.5">
-                {miembros.map((r) => (
-                  <li key={r.alumnoId}>
-                    <button
-                      type="button"
-                      disabled={ocupado}
-                      onClick={() => void accion({ tipo: 'moverEquipo', alumnoId: r.alumnoId, equipo: (i + 1) % cantidad })}
-                      aria-label={`Pasar a ${r.nombre} a los ${equipo((i + 1) % cantidad).nombre}`}
-                      className={cn(
-                        'flex items-center gap-1.5 rounded-full bg-muted py-0.5 pr-3 pl-0.5 text-sm font-medium outline-none hover:bg-secondary focus-visible:ring-3 focus-visible:ring-ring/50',
-                        !r.conectado && 'opacity-50',
-                      )}
-                    >
-                      <PinAvatar avatar={r.avatar} tamano={24} />
-                      {r.nombre}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }

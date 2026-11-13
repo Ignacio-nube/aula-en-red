@@ -14,6 +14,10 @@ export const MOVIMIENTO = {
   rebote: { type: 'spring', stiffness: 380, damping: 17 },
   /** Barras y columnas que crecen: lento y con peso. */
   crecer: { type: 'spring', stiffness: 120, damping: 20, mass: 1.1 },
+  /** Algo que cae y golpea (los números de la cuenta, la corona): duro, con un rebote corto. */
+  impacto: { type: 'spring', stiffness: 700, damping: 22, mass: 1.2 },
+  /** Revelados con suspenso (la respuesta correcta, el ganador): lento y sin rebote. */
+  dramatico: { type: 'spring', stiffness: 90, damping: 18, mass: 1 },
   /** Salida: no compite con lo que entra. */
   salida: { duration: 0.16, ease: [0.4, 0, 1, 1] },
 } satisfies Record<string, Transition>;
@@ -27,6 +31,8 @@ export function escalon(i: number, paso = 0.06, inicio = 0.1): number {
 export function vibrar(patron: number | number[]): void {
   try {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // Sin un toque previo el navegador la bloquea (y lo anota en la consola).
+    if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
     navigator.vibrate?.(patron);
   } catch {
     // Algunos navegadores tiran error si no hubo un toque antes; da igual.

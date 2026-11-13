@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { HardDrive, LogOut, Pencil, WifiOff } from 'lucide-react';
-import { Estanque } from '@/components/estanque/Estanque';
+import { FondoEspera } from '@/components/fondos/FondoEspera';
 import type { AlumnoPublico } from '@aula/shared';
 import { BotonLiviano } from '@/components/pd/BotonLiviano';
 import { BotonTema } from '@/components/pd/BotonTema';
@@ -11,6 +11,7 @@ import { PinAvatar } from '@/components/pd/Pin';
 import { Button } from '@/components/ui/button';
 import { useAtencion, useEncuesta, useMiMano, usePresentacion } from '@/lib/clase';
 import { formatoPuntos, useJuego } from '@/lib/juego';
+import { AYUDA_FONDO, useFondo } from '@/lib/fondo';
 import { useLiviano } from '@/lib/liviano';
 import { useCortado, useSocket } from '@/lib/socket';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,7 @@ import { useActividad } from '@/lib/actividad';
 import { BarraParticipacion } from './BarraParticipacion';
 import { DriveLibre } from './DriveLibre';
 import { ElegirEmoji } from './EditarEmoji';
+import { ElegirFondo } from './ElegirFondo';
 import { EncuestaAlumno, PantallaAtencion } from './EncuestaAlumno';
 import { JuegoAlumno } from './JuegoAlumno';
 import { PresentacionAlumno } from './PresentacionAlumno';
@@ -34,6 +36,7 @@ interface Props {
 export function SalaEspera({ token, alumno, nombreCurso, onSalir, onActualizar }: Props) {
   const socket = useSocket({ rol: 'alumno', token });
   const liviano = useLiviano();
+  const fondo = useFondo();
   const [editando, setEditando] = useState(false);
   const cerrarEmoji = useCallback(() => setEditando(false), []);
   const [enDrive, setEnDrive] = useState(false);
@@ -65,9 +68,11 @@ export function SalaEspera({ token, alumno, nombreCurso, onSalir, onActualizar }
     };
   }, [socket, onSalir, onActualizar]);
 
-  // Esperando al profe: el estanque de fondo (salvo en modo liviano, que es para compus lentas).
+  // Esperando al profe: el fondo que eligió (en modo liviano, que es para compus lentas, queda quieto).
   const esperando = !compacto;
   const conEstanque = esperando && !liviano;
+  // El espacio es oscuro también con el tema claro (un atardecer): lo de encima va con letras claras.
+  const sobreOscuro = esperando && fondo === 'espacio';
   const pastilla = (
     <>
       <PinAvatar avatar={alumno.avatar} tamano={compacto ? 30 : 36} />
@@ -80,9 +85,9 @@ export function SalaEspera({ token, alumno, nombreCurso, onSalir, onActualizar }
   );
 
   return (
-    <div className={cn('relative flex h-dvh flex-col overflow-hidden', esperando && 'bg-estanque')}>
-      {/* Mientras elige el emoji, los peces se quedan quietos y se apagan: no compiten con la grilla. */}
-      {conEstanque && <Estanque className={cn('absolute inset-0 size-full', editando && 'opacity-30')} pausado={editando} />}
+    <div className={cn('relative flex h-dvh flex-col overflow-hidden', sobreOscuro && 'dark text-foreground')}>
+      {/* Mientras elige el emoji, el fondo se queda quieto y se apaga: no compite con la grilla. */}
+      {esperando && <FondoEspera fondo={fondo} quieto={liviano} pausado={editando} apagado={editando} />}
       <div className={cn('relative flex items-center justify-between gap-4 px-4 sm:px-6', compacto ? 'py-2' : 'py-4')}>
         <div data-koi-avoid className="vidrio flex items-center gap-3 rounded-full py-1.5 pr-5 pl-2 shadow-[var(--pd-sombra-tarjeta)]">
           {pastilla}
@@ -106,7 +111,7 @@ export function SalaEspera({ token, alumno, nombreCurso, onSalir, onActualizar }
       ) : editando ? (
         <ElegirEmoji onVolver={cerrarEmoji} token={token} alumno={alumno} onGuardado={onActualizar} />
       ) : (
-        <Espera alumno={alumno} nombreCurso={nombreCurso} conEstanque={conEstanque} onEditar={() => setEditando(true)}>
+        <Espera alumno={alumno} nombreCurso={nombreCurso} conEstanque={conEstanque} ayuda={AYUDA_FONDO[fondo]} onEditar={() => setEditando(true)}>
           <Button size="lg" variant="outline" className="vidrio mx-auto rounded-full" onClick={() => setEnDrive(true)}>
             <HardDrive data-icon="inline-start" />
             Abrir mi Drive
@@ -146,7 +151,8 @@ export function SalaEspera({ token, alumno, nombreCurso, onSalir, onActualizar }
             'hidden',
         )}
       >
-        <BotonTema />
+        <BotonTema className="mx-1" />
+        {esperando && <ElegirFondo />}
         <BotonLiviano />
         <Button variant="ghost" size="sm" onClick={() => onSalir()}>
           <LogOut data-icon="inline-start" />
@@ -162,12 +168,14 @@ function Espera({
   alumno,
   nombreCurso,
   conEstanque,
+  ayuda,
   onEditar,
   children,
 }: {
   alumno: AlumnoPublico;
   nombreCurso?: string;
   conEstanque: boolean;
+  ayuda: string;
   onEditar: () => void;
   children: ReactNode;
 }) {
@@ -203,7 +211,7 @@ function Espera({
           </p>
         </div>
         {children}
-        {conEstanque && <p className="text-sm font-medium text-muted-foreground">Mientras tanto, tocá el agua para darles de comer a los peces.</p>}
+        {conEstanque && <p className="text-sm font-medium text-muted-foreground">{ayuda}</p>}
       </div>
     </div>
   );
