@@ -13,7 +13,8 @@
     "build": "npm run build -w client && npm run build -w server",
     "start": "npm run start -w server",
     "bots": "npm run bots -w server --",
-    "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client"
+    "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client",
+    "scratch:compilar": "node scripts/scratch/compilar.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
