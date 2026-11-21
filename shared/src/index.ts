@@ -11,6 +11,7 @@ export * from './clase';
 export * from './tipeo';
 export * from './drive';
 export * from './galeria';
+export * from './scratch';
 export * from './actividades';
 
 /** Emojis para los avatares de los alumnos (el profe puede cambiarlos). */
