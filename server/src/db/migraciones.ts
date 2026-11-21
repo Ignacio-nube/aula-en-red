@@ -287,4 +287,35 @@ export const MIGRACIONES: readonly string[] = [
     PRIMARY KEY (imagen_id, alumno_id)
   );
   `,
+  /* 8: Taller de Scratch. Proyectos iniciales del profe, talleres y entregas (.sb3) de los alumnos. */ `
+  CREATE TABLE scratch_iniciales (
+    id         INTEGER PRIMARY KEY,
+    nombre     TEXT NOT NULL,
+    archivo    TEXT NOT NULL,
+    bytes      INTEGER NOT NULL,
+    subido_en  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- Cada taller guarda su propia copia del inicial: borrar uno de la lista no rompe los talleres.
+  CREATE TABLE scratch_talleres (
+    id               INTEGER PRIMARY KEY,
+    comision_id      INTEGER REFERENCES comisiones(id) ON DELETE SET NULL,
+    comision_nombre  TEXT NOT NULL,
+    titulo           TEXT NOT NULL,
+    inicial_nombre   TEXT,
+    inicial_archivo  TEXT,
+    creado_en        TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- Una entrega por alumno y taller: entregar de nuevo reemplaza el archivo.
+  CREATE TABLE scratch_entregas (
+    taller_id     INTEGER NOT NULL REFERENCES scratch_talleres(id) ON DELETE CASCADE,
+    alumno_id     INTEGER NOT NULL REFERENCES alumnos(id) ON DELETE CASCADE,
+    archivo       TEXT NOT NULL,
+    bytes         INTEGER NOT NULL,
+    veces         INTEGER NOT NULL DEFAULT 1,
+    entregada_en  TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (taller_id, alumno_id)
+  );
+  `,
 ];
