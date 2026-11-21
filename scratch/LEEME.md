@@ -16,7 +16,13 @@ El editor es [TurboWarp](https://turbowarp.org), una versión de Scratch 3 que c
 | `.fuente/` | El código de TurboWarp, para compilar | No: se baja |
 | `VERSION.json` | Qué commit se compiló y cuándo | No: se genera |
 
-`editor/`, `biblioteca/` y `.fuente/` pesan cientos de MB. Por eso no van al repo y se arman con un solo comando:
+Estas carpetas no van al repo y se arman con un solo comando:
+
+- `editor/`, unos 25 MB.
+- `biblioteca/`, unos 55 MB.
+- `.fuente/`, con las dependencias de TurboWarp, unos 550 MB.
+
+El comando es:
 
 ```bash
 npm run scratch:compilar

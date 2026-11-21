@@ -42,9 +42,15 @@ El comando:
 3. Lo compila en `scratch/editor/`.
 4. Baja la biblioteca completa de disfraces, fondos y sonidos en `scratch/biblioteca/` (unos 1.300 archivos).
 
-La primera vez tarda entre 10 y 20 minutos, y conviene tener 8 GB de RAM libres para la compilación. Si se corta la descarga, volvé a correrlo: sigue desde donde quedó. Con `npm run scratch:compilar -- --biblioteca` baja solamente lo que falte de la biblioteca.
+La primera vez tarda unos 10 minutos, sobre todo en instalar las dependencias de TurboWarp. Las siguientes veces tarda uno o dos minutos. Si se corta la descarga, volvé a correrlo: sigue desde donde quedó. Con `npm run scratch:compilar -- --biblioteca` baja solamente lo que falte de la biblioteca.
 
-Todo eso queda fuera del repo (pesa cientos de MB). Si copiás el proyecto a la notebook del aula, copiá también la carpeta `scratch/`. Si falta el editor, el resto de la app anda igual, y el taller muestra un aviso para compilarlo.
+Todo eso queda fuera del repo:
+
+- El editor ocupa unos 25 MB.
+- La biblioteca, unos 55 MB.
+- El código de TurboWarp con sus dependencias (`scratch/.fuente/`), unos 550 MB. Se puede borrar después de compilar.
+
+Si copiás el proyecto a la notebook del aula, copiá también `scratch/editor/` y `scratch/biblioteca/`. Si falta el editor, el resto de la app anda igual, y el taller muestra un aviso para compilarlo.
 
 **Para actualizar TurboWarp:**
 
