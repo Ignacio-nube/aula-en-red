@@ -27,6 +27,33 @@ npm run dev     # servidor en :3000 + Vite en :5173 (abrir http://localhost:5173
 
 El dev server de Vite es solo para desarrollar. **En el aula se usa siempre el build.**
 
+### El editor de Scratch (para el Taller de Scratch)
+
+El Taller de Scratch usa el editor de [TurboWarp](https://turbowarp.org), una versión de Scratch 3 más rápida, con la misma interfaz y en español. Se compila aparte, también en casa con internet:
+
+```bash
+npm run scratch:compilar
+```
+
+El comando:
+
+1. Baja el código de TurboWarp en un commit fijo.
+2. Le aplica unos parches para que no pida nada a internet (la biblioteca, la galería de extensiones y la nube).
+3. Lo compila en `scratch/editor/`.
+4. Baja la biblioteca completa de disfraces, fondos y sonidos en `scratch/biblioteca/` (unos 1.300 archivos).
+
+La primera vez tarda entre 10 y 20 minutos, y conviene tener 8 GB de RAM libres para la compilación. Si se corta la descarga, volvé a correrlo: sigue desde donde quedó. Con `npm run scratch:compilar -- --biblioteca` baja solamente lo que falte de la biblioteca.
+
+Todo eso queda fuera del repo (pesa cientos de MB). Si copiás el proyecto a la notebook del aula, copiá también la carpeta `scratch/`. Si falta el editor, el resto de la app anda igual, y el taller muestra un aviso para compilarlo.
+
+**Para actualizar TurboWarp:**
+
+1. En `scripts/scratch/compilar.mjs`, cambiá `COMMIT` por el commit nuevo de la rama `develop` de [TurboWarp/scratch-gui](https://github.com/TurboWarp/scratch-gui/commits/develop).
+2. Volvé a correr `npm run scratch:compilar`.
+3. Si TurboWarp cambió alguno de los archivos que se parchean, el script se frena y dice cuál. Ajustá ese parche en `PARCHES`, en el mismo archivo.
+
+Licencia (GPL-3.0), marcas de Scratch y detalles: [`scratch/LEEME.md`](scratch/LEEME.md).
+
 ## 2. Cambiar el PIN del profe
 
 Copiá `server/config.example.json` como `server/config.json` y cambiá el PIN:
@@ -46,7 +73,7 @@ También se puede definir `PROFE_PIN=4821` en un archivo `.env`, en la raíz o e
 
 **No cierres la consola de `iniciar.bat`** mientras dure la clase: es el servidor.
 
-Los datos quedan en `server/data/`: `app.db` (base de datos), `uploads/` y `presentaciones/`. Para hacer un backup, copiá esa carpeta con el servidor apagado.
+Los datos quedan en `server/data/`: `app.db` (base de datos), `uploads/`, `presentaciones/`, `drive/` y `scratch/`. Para hacer un backup, copiá esa carpeta con el servidor apagado.
 
 ### Un quiz en vivo
 
@@ -87,6 +114,24 @@ En **Clase en vivo → Herramientas de la clase**:
 
 - **Miren al frente**: tapa la pantalla de los alumnos con un mensaje grande hasta que lo apagues. Es una herramienta de convivencia: no bloquea la compu.
 - **Encuesta rápida o ticket de salida**: una pregunta para toda la clase, con opciones, con caritas (😣 a 🤩) o con texto libre. Mientras está abierta, los resultados los ves solo vos; al cerrarla se muestran en la pantalla grande y en las compus. Si es **anónima**, al cerrarla se borra quién respondió qué. Quedan guardadas en **Resultados → Encuestas** (también en CSV).
+
+### Taller de Scratch
+
+1. Si querés que todos arranquen con un proyecto tuyo, hacelo en Scratch y guardalo con *Archivo → Guardar en tu computadora* (queda un `.sb3`).
+2. En **Clase en vivo → Taller de Scratch**:
+   - Elegí la comisión.
+   - Subí el `.sb3`, o dejá *Proyecto vacío*. Los proyectos subidos quedan en la lista para otros talleres.
+   - Tocá **Empezar el taller**.
+3. Cada alumno ve el editor de Scratch con el proyecto cargado y un botón **Entregar**:
+   - Puede entregar las veces que quiera. Cada entrega reemplaza la anterior.
+   - Si recarga la página, sigue desde su última entrega.
+   - Si quiere cerrar con cambios sin entregar, el navegador le avisa.
+4. En el panel ves quién entregó y quién no:
+   - **Descargar** baja el `.sb3` de cada uno, con su nombre.
+   - **Mostrar en pantalla** lo abre en grande en la pantalla grande y arranca con la bandera verde.
+5. **Terminar el taller** lo cierra para todos. Las entregas quedan guardadas en `server/data/scratch/`.
+
+Todo funciona sin internet, incluida la biblioteca de disfraces, fondos y sonidos. Se esconden las extensiones que necesitan internet (Traducir, Texto a voz, Detección de caras) y las de placas (micro:bit, LEGO), que piden un programa aparte. Los sonidos del proyecto suenan en la compu del alumno: conviene usar auriculares.
 
 ### Modo liviano y modo oscuro
 
@@ -155,6 +200,8 @@ client/   Vite + React + Tailwind + shadcn/ui: vistas /, /profe y /pantalla
 server/   Express + Socket.IO + SQLite (better-sqlite3)
 shared/   Tipos y lógica compartida (eventos de Socket.IO, medidor de contraseñas)
 brand/    Logo original de Punto Digital (se copia en client/public/brand/)
+scratch/  Editor de Scratch (TurboWarp) compilado, su biblioteca y su licencia (ver scratch/LEEME.md)
+scripts/  Script que compila el editor de Scratch
 ```
 
 ## Scripts
@@ -165,3 +212,4 @@ brand/    Logo original de Punto Digital (se copia en client/public/brand/)
 | `npm run build` | Build de producción de cliente y servidor |
 | `npm start` | Corre el build (lo mismo que `iniciar.bat`, sin abrir el navegador) |
 | `npm run typecheck` | Chequeo de tipos de los tres paquetes |
+| `npm run scratch:compilar` | Compila el editor de Scratch y baja su biblioteca (con internet) |
