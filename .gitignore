@@ -6,3 +6,9 @@ server/config.json
 *.log
 .claude/settings.local.json
 *.tsbuildinfo
+# Editor de Scratch compilado (npm run scratch:compilar): pesa mucho y se vuelve a generar
+scratch/.fuente/
+scratch/editor/
+scratch/editor.nuevo/
+scratch/biblioteca/
+scratch/VERSION.json

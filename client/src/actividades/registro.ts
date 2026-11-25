@@ -1,4 +1,4 @@
-import { HardDrive, Keyboard, Vote } from 'lucide-react';
+import { Blocks, HardDrive, Keyboard, Vote } from 'lucide-react';
 import type { EstadoActividad, TipoActividad } from '@aula/shared';
 import { AlumnoMisiones } from './drive/Alumno';
 import { ControlMisiones } from './drive/Control';
@@ -8,6 +8,10 @@ import { AlumnoGaleria } from './galeria/Alumno';
 import { ControlGaleria } from './galeria/Control';
 import { PantallaGaleria } from './galeria/Pantalla';
 import { PrepararGaleria } from './galeria/Preparar';
+import { AlumnoScratch } from './scratch/Alumno';
+import { ControlScratch } from './scratch/Control';
+import { PantallaScratch } from './scratch/Pantalla';
+import { PrepararScratch } from './scratch/Preparar';
 import { AlumnoTipeo } from './tipeo/Alumno';
 import { ControlTipeo } from './tipeo/Control';
 import { PantallaTipeo } from './tipeo/Pantalla';
@@ -49,6 +53,18 @@ export const ACTIVIDADES: { [T in TipoActividad]: DefinicionActividad<T> } = {
     Control: ControlGaleria,
     Alumno: AlumnoGaleria,
     Pantalla: PantallaGaleria,
+  },
+  scratch: {
+    nombre: 'Taller de Scratch',
+    descripcion: 'Programan en Scratch, con un proyecto tuyo para arrancar o desde cero, y te entregan el .sb3.',
+    icono: Blocks,
+    paso3: '¿Con qué proyecto?',
+    // Mientras dure el taller no se ofrece salir: perderían lo que no entregaron.
+    enCurso: () => true,
+    Preparar: PrepararScratch,
+    Control: ControlScratch,
+    Alumno: AlumnoScratch,
+    Pantalla: PantallaScratch,
   },
 };
 

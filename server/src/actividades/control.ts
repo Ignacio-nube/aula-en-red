@@ -17,10 +17,11 @@ import { estaConectado, getIo, presenciaActual } from '../realtime';
 import type { InstanciaActividad, ModuloActividad } from './tipos';
 import { misiones } from './drive';
 import { galeria } from './galeria';
+import { scratch } from './scratch';
 import { tipeo } from './tipeo';
 
 /** Para sumar una actividad: su módulo acá (y su entrada en MapaActividades y en el registro del cliente). */
-const MODULOS: { [T in TipoActividad]: ModuloActividad<T> } = { tipeo, drive: misiones, galeria };
+const MODULOS: { [T in TipoActividad]: ModuloActividad<T> } = { tipeo, drive: misiones, galeria, scratch };
 
 interface EnCurso {
   comisionId: number;
@@ -30,6 +31,13 @@ interface EnCurso {
 
 /** Una sola actividad a la vez, como el quiz y la presentación. */
 let actual: EnCurso | null = null;
+
+/** La actividad en curso si es de ese tipo (y de esa comisión, si se pide): para las que reciben cosas por HTTP. */
+export function actividadDe<T extends TipoActividad>(tipo: T, comisionId?: number): InstanciaActividad<T> | null {
+  if (!actual || actual.instancia.tipo !== tipo) return null;
+  if (comisionId !== undefined && actual.comisionId !== comisionId) return null;
+  return actual.instancia as InstanciaActividad<T>;
+}
 
 export function hayActividadEnCurso(): boolean {
   return actual !== null && !actual.instancia.terminada();

@@ -16,7 +16,12 @@ export const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 export const PRESENTACIONES_DIR = path.join(DATA_DIR, 'presentaciones');
 /** Archivos del simulador de Drive, en una carpeta por alumno. No se sirven estáticos: pasan por un control de permisos. */
 export const DRIVE_DIR = path.join(DATA_DIR, 'drive');
+/** Proyectos de Scratch: los iniciales que sube el profe y las entregas de los alumnos (nombres al azar). */
+export const SCRATCH_DATOS_DIR = path.join(DATA_DIR, 'scratch');
+
+/** El editor de Scratch compilado (`npm run scratch:compilar`): `editor/` y `biblioteca/`. */
+export const SCRATCH_DIR = process.env.AULA_SCRATCH_DIR ? path.resolve(process.env.AULA_SCRATCH_DIR) : path.join(ROOT_DIR, 'scratch');
 
 export function crearCarpetasDeDatos(): void {
-  for (const dir of [DATA_DIR, UPLOADS_DIR, PRESENTACIONES_DIR, DRIVE_DIR]) mkdirSync(dir, { recursive: true });
+  for (const dir of [DATA_DIR, UPLOADS_DIR, PRESENTACIONES_DIR, DRIVE_DIR, SCRATCH_DATOS_DIR]) mkdirSync(dir, { recursive: true });
 }
